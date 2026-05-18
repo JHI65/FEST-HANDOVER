@@ -183,14 +183,20 @@ function Main({ session }) {
       if (shared) {
         try {
           const imported = JSON.parse(decodeURIComponent(escape(atob(shared))));
-          if (imported && imported.id && imported.name) {
-            const exists = f.some(x => x.id === imported.id);
-            if (!exists) {
-              await saveFest(userId, imported);
+          if (imported && imported.name && Array.isArray(imported.days)) {
+            // Evitar duplicados por nombre (mismo festival importado dos veces)
+            const alreadyImported = f.some(x => x.name === imported.name);
+            if (!alreadyImported) {
+              // Generamos siempre un id nuevo: el id original pertenece a otro usuario
+              // y haría colisión con RLS en Supabase
+              const copy = { ...imported, id: uid() };
+              await saveFest(userId, copy);
               f = await loadFests(userId);
             }
           }
-        } catch { }
+        } catch (err) {
+          console.error("Error importando festival compartido:", err);
+        }
         window.history.replaceState({}, "", window.location.pathname);
       }
 
