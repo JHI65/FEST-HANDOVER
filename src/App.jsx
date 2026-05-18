@@ -329,21 +329,21 @@ function Splash() {
 /* ---------- home ---------- */
 function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
   return (
-    <div style={{ padding: "24px 16px 40px" }}>
+    <div style={{ padding: "28px 20px 48px" }}>
       {/* header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
         <div>
-          <div style={{ fontSize: 11, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 4 }}>FOH HANDOVER</div>
-          <div style={{ fontSize: 28, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em" }}>
+          <div style={{ fontSize: 12, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 4 }}>FOH HANDOVER</div>
+          <div style={{ fontSize: 34, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em", lineHeight: 1 }}>
             TUS <span style={{ color: "#f59e0b" }}>FESTIVALES</span>
           </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {user.user_metadata?.avatar_url && (
-            <img src={user.user_metadata.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid #e2e8f0" }} />
+            <img src={user.user_metadata.avatar_url} alt="" style={{ width: 38, height: 38, borderRadius: "50%", border: "2px solid #e2e8f0" }} />
           )}
-          <button onClick={onLogout} style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 8, color: "#94a3b8", fontSize: 10, padding: "4px 8px", cursor: "pointer" }}>
-            salir
+          <button onClick={onLogout} style={{ background: "#f1f5f9", border: "none", borderRadius: 10, color: "#64748b", fontSize: 12, padding: "8px 12px", cursor: "pointer" }}>
+            Salir
           </button>
         </div>
       </div>
@@ -353,8 +353,8 @@ function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
         return (
           <div key={f.id} style={S.festCard} onClick={() => onOpen(f.id)}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em" }}>{f.name}</div>
-              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{f.days.length} días · {total} artistas</div>
+              <div style={{ fontSize: 20, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em" }}>{f.name}</div>
+              <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>{f.days.length} días · {total} artistas</div>
             </div>
             <button onClick={e => { e.stopPropagation(); onDelete(f.id); }} style={S.iconBtn}>🗑</button>
             <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>
@@ -876,19 +876,19 @@ function FohNotes({ notes, onAdd, onDel }) {
 
 /* ---------- styles ---------- */
 const S = {
-  app: { minHeight: "100vh", background: "#f8fafc", fontFamily: "'JetBrains Mono',monospace", maxWidth: 480, margin: "0 auto", color: "#0f172a" },
-  festCard: { display: "flex", alignItems: "center", gap: 10, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "14px 16px", marginBottom: 10, cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" },
-  bigBtn: { width: "100%", padding: "15px", background: "#0f172a", color: "#fff", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.1em", cursor: "pointer", marginTop: 8 },
-  iconBtn: { background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer", padding: 4 },
-  backBtn: { background: "#f1f5f9", border: "1px solid #e2e8f0", color: "#334155", fontSize: 20, width: 36, height: 36, borderRadius: 10, cursor: "pointer", lineHeight: 1 },
-  input: { width: "100%", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, color: "#0f172a", fontSize: 16, padding: "10px 12px", fontFamily: "monospace", outline: "none" },
-  daySection: { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, marginBottom: 12 },
-  artForm: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, marginBottom: 10 },
-  addBtn: { width: "100%", padding: "10px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, color: "#64748b", fontSize: 12, cursor: "pointer", fontFamily: "monospace", marginTop: 6 },
-  smBtn: { padding: "8px 12px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, color: "#334155", fontSize: 12, cursor: "pointer" },
-  topBar: { display: "flex", alignItems: "center", gap: 10, padding: "14px 14px 10px", position: "sticky", top: 0, background: "#fff", zIndex: 10, borderBottom: "1px solid #e2e8f0" },
-  syncBtn: { background: "none", border: "1px solid #e2e8f0", borderRadius: 8, color: "#94a3b8", fontSize: 10, padding: "6px 9px", cursor: "pointer" },
-  navBtn: { flex: 1, padding: "13px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, color: "#334155", fontSize: 13, cursor: "pointer", fontFamily: "monospace" },
+  app: { minHeight: "100vh", background: "#f8fafc", fontFamily: "'JetBrains Mono',monospace", width: "100%", color: "#0f172a" },
+  festCard: { display: "flex", alignItems: "center", gap: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: "18px 18px", marginBottom: 12, cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" },
+  bigBtn: { width: "100%", padding: "18px", background: "#0f172a", color: "#fff", border: "none", borderRadius: 16, fontSize: 16, fontWeight: 700, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.1em", cursor: "pointer", marginTop: 10 },
+  iconBtn: { background: "none", border: "none", color: "#94a3b8", fontSize: 20, cursor: "pointer", padding: "6px 8px" },
+  backBtn: { background: "#f1f5f9", border: "1px solid #e2e8f0", color: "#334155", fontSize: 22, width: 44, height: 44, borderRadius: 12, cursor: "pointer", lineHeight: 1 },
+  input: { width: "100%", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, color: "#0f172a", fontSize: 16, padding: "13px 14px", fontFamily: "monospace", outline: "none" },
+  daySection: { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: 16, marginBottom: 14 },
+  artForm: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, marginBottom: 12 },
+  addBtn: { width: "100%", padding: "14px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, color: "#64748b", fontSize: 14, cursor: "pointer", fontFamily: "monospace", marginTop: 8 },
+  smBtn: { padding: "10px 16px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, color: "#334155", fontSize: 13, cursor: "pointer" },
+  topBar: { display: "flex", alignItems: "center", gap: 10, padding: "16px 16px 12px", position: "sticky", top: 0, background: "#fff", zIndex: 10, borderBottom: "1px solid #e2e8f0" },
+  syncBtn: { background: "none", border: "1px solid #e2e8f0", borderRadius: 10, color: "#94a3b8", fontSize: 11, padding: "8px 11px", cursor: "pointer" },
+  navBtn: { flex: 1, padding: "16px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, color: "#334155", fontSize: 14, cursor: "pointer", fontFamily: "monospace" },
 };
 
 function Style() {
