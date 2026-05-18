@@ -166,9 +166,11 @@ function Main({ session }) {
   const [slots, setSlotsState] = useState({});
   const [screen, setScreen] = useState("home");
   const [lastSync, setLastSync] = useState(null);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     (async () => {
+      try {
       // Check URL for shared festival
       const params = new URLSearchParams(window.location.search);
       const shared = params.get("fest");
@@ -201,6 +203,9 @@ function Main({ session }) {
       setChecksState(ud.checks || {});
       setSlotsState(ud.slots || {});
       setLastSync(new Date());
+      } catch (err) {
+        setLoadError(err.message || "Error al cargar datos");
+      }
     })();
   }, [userId]);
 
@@ -253,6 +258,22 @@ function Main({ session }) {
     await supabase.auth.signOut();
   }
 
+  if (loadError) return (
+    <div style={{ minHeight: "100vh", background: "#0f172a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "monospace", gap: 16 }}>
+      <Style />
+      <div style={{ fontSize: 32 }}>⚠️</div>
+      <div style={{ color: "#f87171", fontSize: 13, textAlign: "center", maxWidth: 340 }}>
+        <strong>Error al conectar con la base de datos</strong><br /><br />
+        {loadError}<br /><br />
+        <span style={{ color: "#94a3b8", fontSize: 11 }}>
+          Asegúrate de haber ejecutado el SQL en Supabase y de tener las tablas <code>festivals</code> y <code>user_data</code> creadas.
+        </span>
+      </div>
+      <button onClick={() => supabase.auth.signOut()} style={{ marginTop: 8, background: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", cursor: "pointer", fontSize: 13 }}>
+        Cerrar sesión
+      </button>
+    </div>
+  );
   if (!fests) return <Splash />;
   const fest = fests.find(f => f.id === festId);
 
