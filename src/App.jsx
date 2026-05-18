@@ -970,29 +970,17 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
           <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {artists.map((a, i) => {
-            const k = `${fest.id}__${day.id}__${a.id}`;
-            const ok = !!checks[`${k}__sc`] && !!checks[`${k}__show`];
-            const color = sigColor(a.signal);
-            return (
-              <div key={a.id} onClick={() => setSelectedId(a.id)} style={{
-                background: "#fff", borderRadius: 16,
-                border: `1.5px solid ${ok ? "#86efac" : color + "33"}`,
-                boxShadow: ok ? "0 0 0 3px #dcfce7" : "0 1px 6px rgba(0,0,0,0.06)",
-                position: "relative", overflow: "hidden", cursor: "pointer",
-              }}>
-                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: color, borderRadius: "16px 0 0 16px" }} />
-                <div style={{ padding: "14px 16px 14px 20px" }}>
-                  <div style={{ fontSize: 26, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.03em", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
-                  <div style={{ fontSize: 11, color: "#64748b", fontFamily: "monospace", marginTop: 4, display: "flex", gap: 10, alignItems: "center" }}>
-                    <span>🎛️ {a.console || "—"}</span>
-                    {a.signal && <span style={{ color }}>{a.signal}</span>}
-                    {ok && <span style={{ fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "1px 7px", marginLeft: "auto" }}>✓ OK</span>}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {artists.map((a) => (
+            <CompactArtistCard
+              key={a.id}
+              a={a}
+              fest={fest}
+              day={day}
+              checks={checks}
+              toggleCheck={toggleCheck}
+              onSelect={setSelectedId}
+            />
+          ))}
         </div>
         <button onClick={() => setShowAdd(true)} style={{ ...S.addBtn, marginTop: 14 }}>+ Añadir artista</button>
       </div>
@@ -1242,6 +1230,127 @@ function FestEditModal({ fest, onSave, onClose }) {
           <button onClick={save} disabled={!name.trim()} style={{ flex: 1, padding: "14px", background: "#0f172a", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed", fontFamily: "'JetBrains Mono',monospace", color: "#fff", opacity: name.trim() ? 1 : 0.4 }}>
             Guardar
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- compact artist card (ficha compacta) ---------- */
+function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
+  const [showMode, setShowMode] = useState(false);
+
+  const k = `${fest.id}__${day.id}__${a.id}`;
+  const scDone = !!checks[`${k}__sc`];
+  const showDone = !!checks[`${k}__show`];
+  const ok = scDone && showDone;
+  const color = sigColor(a.signal);
+
+  const cardBg = showMode ? "#0d1014" : "#fff";
+  const cardText = showMode ? "#eceef0" : "#0f172a";
+  const borderC = showMode ? "rgba(255,255,255,0.12)" : "#e2e8f0";
+  const chipBg = showMode ? "rgba(255,255,255,0.07)" : "#f8fafc";
+  const chipBorder = showMode ? "rgba(255,255,255,0.12)" : "#e2e8f0";
+  const textTertiary = showMode ? "#64748b" : "#94a3b8";
+  const textSecondary = showMode ? "#94a3b8" : "#64748b";
+  const accentLeft = ok ? "#16a34a" : color;
+
+  return (
+    <div style={{ background: "#f8fafc", borderRadius: 14, padding: "0.75rem" }}>
+      {/* toggle header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <span style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase" }}>Ficha compacta</span>
+        <div style={{ display: "flex", gap: 3, background: "#fff", border: "0.5px solid #e2e8f0", borderRadius: 8, padding: 3 }}>
+          <button
+            onClick={e => { e.stopPropagation(); setShowMode(false); }}
+            style={{ fontSize: 11, padding: "4px 10px", border: "none", borderRadius: 6, cursor: "pointer", background: !showMode ? "#0f172a" : "transparent", color: !showMode ? "#fff" : "#64748b", fontFamily: "monospace" }}>
+            Preparación
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); setShowMode(true); }}
+            style={{ fontSize: 11, padding: "4px 10px", border: "none", borderRadius: 6, cursor: "pointer", background: showMode ? "#0f172a" : "transparent", color: showMode ? "#fff" : "#64748b", fontFamily: "monospace" }}>
+            Show
+          </button>
+        </div>
+      </div>
+
+      {/* main card */}
+      <div
+        onClick={() => onSelect(a.id)}
+        style={{
+          border: `0.5px solid ${borderC}`,
+          borderLeft: `3px solid ${accentLeft}`,
+          borderRadius: 12,
+          padding: "0.85rem 1rem",
+          background: cardBg,
+          color: cardText,
+          cursor: "pointer",
+          transition: "background 0.2s, color 0.2s, border-color 0.2s",
+        }}>
+
+        {/* name + console */}
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+            <span style={{ fontSize: 21, fontWeight: 500, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {a.artist || "—"}
+            </span>
+            <span style={{ fontSize: 11, color: textTertiary, whiteSpace: "nowrap" }}>{day.label} · fest</span>
+          </div>
+          <div style={{ textAlign: "right", flexShrink: 0, lineHeight: 1 }}>
+            <div style={{ fontSize: 9, color: textTertiary, textTransform: "uppercase", letterSpacing: "0.06em" }}>mesa</div>
+            <div style={{ fontSize: 15, fontWeight: 500, fontFamily: "monospace" }}>{a.console || "—"}</div>
+          </div>
+        </div>
+
+        {/* signal chain chips */}
+        <div style={{ display: "flex", alignItems: "center", gap: 5, margin: "10px 0", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color: cardText }}>
+            {a.connection || "—"}
+          </span>
+          <span style={{ fontSize: 12, color: textTertiary }}>→</span>
+          <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color }}>
+            {a.signal || "—"}
+          </span>
+          <span style={{ fontSize: 12, color: textTertiary }}>→</span>
+          <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color: cardText }}>
+            {a.console || "—"}
+          </span>
+          {a.preset && (
+            <span style={{
+              marginLeft: "auto", fontSize: 11, fontWeight: 500, fontFamily: "monospace",
+              padding: "3px 8px", borderRadius: 6,
+              background: a.presetOk ? (showMode ? "rgba(57,217,138,0.15)" : "#f0fdf4") : chipBg,
+              border: `0.5px solid ${a.presetOk ? "#16a34a" : chipBorder}`,
+              color: a.presetOk ? "#16a34a" : textSecondary,
+              display: "inline-flex", alignItems: "center", gap: 4,
+            }}>
+              ⚙ {a.preset}
+            </span>
+          )}
+        </div>
+
+        {/* footer: lx · mon · ok/checks */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: textSecondary, paddingTop: 8, borderTop: `0.5px solid ${borderC}` }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: a.toLx ? 1 : 0.5 }}>
+            💡 LX <strong style={{ color: cardText, fontWeight: 500 }}>{a.toLx || "No"}</strong>
+          </span>
+          <span style={{ color: textTertiary }}>·</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: a.toMon ? 1 : 0.5 }}>
+            🎧 Mon <strong style={{ color: cardText, fontWeight: 500 }}>{a.toMon || "No"}</strong>
+          </span>
+          {!showMode && ok && (
+            <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "1px 7px" }}>✓ OK</span>
+          )}
+          {showMode && (
+            <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+              <button onClick={e => { e.stopPropagation(); toggleCheck(`${k}__sc`); }} style={{ fontSize: 10, padding: "4px 8px", border: `1px solid ${scDone ? "#39d98a" : "rgba(255,255,255,0.2)"}`, borderRadius: 8, background: scDone ? "rgba(57,217,138,0.15)" : "transparent", color: scDone ? "#39d98a" : "#94a3b8", cursor: "pointer" }}>
+                {scDone ? "✓" : "○"} SC
+              </button>
+              <button onClick={e => { e.stopPropagation(); toggleCheck(`${k}__show`); }} style={{ fontSize: 10, padding: "4px 8px", border: `1px solid ${showDone ? "#39d98a" : "rgba(255,255,255,0.2)"}`, borderRadius: 8, background: showDone ? "rgba(57,217,138,0.15)" : "transparent", color: showDone ? "#39d98a" : "#94a3b8", cursor: "pointer" }}>
+                {showDone ? "✓" : "○"} SHOW
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
