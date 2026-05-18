@@ -325,20 +325,21 @@ function Splash() {
 function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
-    <div style={{ padding: "28px 20px 48px" }} onClick={() => menuOpen && setMenuOpen(false)}>
+    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", padding: "20px 20px 24px", overflow: "hidden" }}
+      onClick={() => menuOpen && setMenuOpen(false)}>
+
       {/* header */}
-      <div style={{ position: "relative", marginBottom: 28 }}>
-        {/* avatar con dropdown */}
+      <div style={{ position: "relative", marginBottom: 20, flexShrink: 0 }}>
         <div style={{ position: "absolute", top: 0, right: 0 }}>
           <img
             src={user.user_metadata?.avatar_url || "https://ui-avatars.com/api/?name=U&background=e2e8f0&color=64748b"}
             alt=""
             onClick={e => { e.stopPropagation(); setMenuOpen(o => !o); }}
-            style={{ width: 42, height: 42, borderRadius: "50%", border: "2px solid #e2e8f0", cursor: "pointer", display: "block" }}
+            style={{ width: 38, height: 38, borderRadius: "50%", border: "2px solid #e2e8f0", cursor: "pointer", display: "block" }}
           />
           {menuOpen && (
             <div onClick={e => e.stopPropagation()} style={{
-              position: "absolute", right: 0, top: 50, background: "#fff",
+              position: "absolute", right: 0, top: 46, background: "#fff",
               border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
               padding: "6px", minWidth: 160, zIndex: 50,
             }}>
@@ -350,36 +351,37 @@ function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
                 width: "100%", padding: "10px 12px", background: "none", border: "none",
                 borderRadius: 8, color: "#ef4444", fontSize: 13, cursor: "pointer",
                 textAlign: "left", fontFamily: "'JetBrains Mono',monospace",
-              }}>
-                Cerrar sesión
-              </button>
+              }}>Cerrar sesión</button>
             </div>
           )}
         </div>
-
-        {/* título centrado */}
-        <div style={{ textAlign: "center", paddingTop: 4 }}>
-          <div style={{ fontSize: 12, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 4 }}>FOH HANDOVER</div>
-          <div style={{ fontSize: 36, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em", lineHeight: 1 }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 2 }}>FOH HANDOVER</div>
+          <div style={{ fontSize: 32, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em", lineHeight: 1 }}>
             TUS <span style={{ color: "#f59e0b" }}>FESTIVALES</span>
           </div>
         </div>
       </div>
 
-      {fests.map(f => {
-        const total = f.days.reduce((s, d) => s + d.artists.length, 0);
-        return (
-          <div key={f.id} style={S.festCard} onClick={() => onOpen(f.id)}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 20, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em" }}>{f.name}</div>
-              <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>{f.days.length} días · {total} artistas</div>
+      {/* lista festivales — crece y hace scroll interno si hay muchos */}
+      <div style={{ flex: 1, overflowY: "auto", marginBottom: 14 }}>
+        {fests.map(f => {
+          const total = f.days.reduce((s, d) => s + d.artists.length, 0);
+          return (
+            <div key={f.id} style={S.festCard} onClick={() => onOpen(f.id)}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</div>
+                <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{f.days.length} días · {total} artistas</div>
+              </div>
+              <button onClick={e => { e.stopPropagation(); onDelete(f.id); }} style={S.iconBtn}>🗑</button>
+              <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>
             </div>
-            <button onClick={e => { e.stopPropagation(); onDelete(f.id); }} style={S.iconBtn}>🗑</button>
-            <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>
-          </div>
-        );
-      })}
-      <button onClick={onNew} style={S.bigBtn}>+ CREAR FESTIVAL</button>
+          );
+        })}
+      </div>
+
+      {/* botón fijo abajo */}
+      <button onClick={onNew} style={{ ...S.bigBtn, marginTop: 0, flexShrink: 0 }}>+ CREAR FESTIVAL</button>
     </div>
   );
 }
@@ -894,8 +896,8 @@ function FohNotes({ notes, onAdd, onDel }) {
 
 /* ---------- styles ---------- */
 const S = {
-  app: { minHeight: "100vh", background: "#f8fafc", fontFamily: "'JetBrains Mono',monospace", width: "100%", color: "#0f172a" },
-  festCard: { display: "flex", alignItems: "center", gap: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: "18px 18px", marginBottom: 12, cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" },
+  app: { height: "100dvh", overflow: "hidden", background: "#f8fafc", fontFamily: "'JetBrains Mono',monospace", width: "100%", color: "#0f172a" },
+  festCard: { display: "flex", alignItems: "center", gap: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "14px 16px", marginBottom: 10, cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" },
   bigBtn: { width: "100%", padding: "18px", background: "#0f172a", color: "#fff", border: "none", borderRadius: 16, fontSize: 16, fontWeight: 700, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.1em", cursor: "pointer", marginTop: 10 },
   iconBtn: { background: "none", border: "none", color: "#94a3b8", fontSize: 20, cursor: "pointer", padding: "6px 8px" },
   backBtn: { background: "#f1f5f9", border: "1px solid #e2e8f0", color: "#334155", fontSize: 22, width: 44, height: 44, borderRadius: 12, cursor: "pointer", lineHeight: 1 },
