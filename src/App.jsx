@@ -1,18 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-
-/* ---------- storage ---------- */
-const FEST_KEY = "foh_festivals_v2";
-const NOTES_KEY = "foh_notes_v2";
-const CHECKS_KEY = "foh_checks_v2";
-const SLOTS_KEY = "foh_slots_v2";
-
-async function load(key) {
-  try { const r = await window.storage.get(key, true); return r ? JSON.parse(r.value) : null; }
-  catch { return null; }
-}
-async function save(key, data) {
-  try { await window.storage.set(key, JSON.stringify(data), true); } catch { }
-}
+import { supabase } from "./supabase";
 
 /* ---------- seed ---------- */
 const SEED = [{
@@ -57,57 +44,213 @@ function sigColor(s) {
 }
 const uid = () => Math.random().toString(36).slice(2, 9);
 
+/* ---------- Supabase storage ---------- */
+async function loadFests(userId) {
+  const { data } = await supabase
+    .from("festivals")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  return data || [];
+}
+
+async function saveFest(userId, fest) {
+  await supabase.from("festivals").upsert({
+    id: fest.id,
+    user_id: userId,
+    name: fest.name,
+    days: fest.days,
+  });
+}
+
+async function deleteFest(festId) {
+  await supabase.from("festivals").delete().eq("id", festId);
+}
+
+async function loadUserData(userId) {
+  const { data } = await supabase
+    .from("user_data")
+    .select("notes, checks, slots")
+    .eq("user_id", userId)
+    .single();
+  return data || { notes: {}, checks: {}, slots: {} };
+}
+
+async function saveUserData(userId, notes, checks, slots) {
+  await supabase.from("user_data").upsert({
+    user_id: userId,
+    notes,
+    checks,
+    slots,
+  });
+}
+
 /* ============================================================ */
 export default function App() {
+  const [session, setSession] = useState(undefined); // undefined = loading
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (session === undefined) return <Splash />;
+  if (!session) return <LoginScreen />;
+  return <Main session={session} />;
+}
+
+/* ---------- login ---------- */
+function LoginScreen() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function loginWithGoogle() {
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) { setError(error.message); setLoading(false); }
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#0f172a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'JetBrains Mono',monospace" }}>
+      <Style />
+      <div style={{ marginBottom: 8, fontSize: 11, color: "#475569", letterSpacing: "0.2em" }}>FOH HANDOVER</div>
+      <div style={{ fontSize: 42, fontFamily: "'Bebas Neue',sans-serif", color: "#fff", letterSpacing: "0.05em", marginBottom: 4 }}>
+        TUS <span style={{ color: "#f59e0b" }}>FESTIVALES</span>
+      </div>
+      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 48, textAlign: "center" }}>
+        Inicia sesión para guardar y sincronizar tus festivales
+      </div>
+      <button onClick={loginWithGoogle} disabled={loading} style={{
+        display: "flex", alignItems: "center", gap: 12,
+        background: "#fff", border: "none", borderRadius: 14,
+        padding: "14px 24px", fontSize: 14, fontWeight: 700,
+        fontFamily: "'JetBrains Mono',monospace", cursor: loading ? "not-allowed" : "pointer",
+        opacity: loading ? 0.6 : 1, color: "#0f172a",
+        boxShadow: "0 2px 16px rgba(0,0,0,0.4)",
+        width: "100%", maxWidth: 320, justifyContent: "center",
+      }}>
+        <GoogleIcon />
+        {loading ? "Conectando…" : "Continuar con Google"}
+      </button>
+      {error && <div style={{ marginTop: 16, color: "#f87171", fontSize: 12, textAlign: "center" }}>{error}</div>}
+    </div>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18">
+      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+      <path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/>
+      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"/>
+    </svg>
+  );
+}
+
+/* ---------- main app (autenticado) ---------- */
+function Main({ session }) {
+  const userId = session.user.id;
+
   const [fests, setFests] = useState(null);
   const [festId, setFestId] = useState(null);
   const [dayIdx, setDayIdx] = useState(0);
   const [artIdx, setArtIdx] = useState(0);
-  const [notes, setNotes] = useState({});
-  const [checks, setChecks] = useState({});
-  const [slots, setSlots] = useState({});
+  const [notes, setNotesState] = useState({});
+  const [checks, setChecksState] = useState({});
+  const [slots, setSlotsState] = useState({});
   const [screen, setScreen] = useState("home");
   const [lastSync, setLastSync] = useState(null);
 
   useEffect(() => {
     (async () => {
-      let f = await load(FEST_KEY);
-      if (!f) { f = SEED; await save(FEST_KEY, f); }
-      // check URL for shared festival
+      // Check URL for shared festival
       const params = new URLSearchParams(window.location.search);
       const shared = params.get("fest");
+
+      let f = await loadFests(userId);
+
+      if (f.length === 0) {
+        // Seed initial festival for new users
+        for (const fest of SEED) await saveFest(userId, fest);
+        f = await loadFests(userId);
+      }
+
       if (shared) {
         try {
           const imported = JSON.parse(decodeURIComponent(escape(atob(shared))));
           if (imported && imported.id && imported.name) {
-            const exists = f && f.some(x => x.id === imported.id);
-            if (!exists) { f = [...(f || []), imported]; await save(FEST_KEY, f); }
+            const exists = f.some(x => x.id === imported.id);
+            if (!exists) {
+              await saveFest(userId, imported);
+              f = await loadFests(userId);
+            }
           }
         } catch { }
         window.history.replaceState({}, "", window.location.pathname);
       }
-      const n = await load(NOTES_KEY) || {};
-      const c = await load(CHECKS_KEY) || {};
-      const sl = await load(SLOTS_KEY) || {};
-      setFests(f); setNotes(n); setChecks(c); setSlots(sl); setLastSync(new Date());
+
+      const ud = await loadUserData(userId);
+      setFests(f);
+      setNotesState(ud.notes || {});
+      setChecksState(ud.checks || {});
+      setSlotsState(ud.slots || {});
+      setLastSync(new Date());
     })();
-  }, []);
+  }, [userId]);
 
   async function refresh() {
-    const f = await load(FEST_KEY);
-    const n = await load(NOTES_KEY) || {};
-    const c = await load(CHECKS_KEY) || {};
-    const sl = await load(SLOTS_KEY) || {};
-    if (f) setFests(f); setNotes(n); setChecks(c); setSlots(sl); setLastSync(new Date());
+    const f = await loadFests(userId);
+    const ud = await loadUserData(userId);
+    setFests(f);
+    setNotesState(ud.notes || {});
+    setChecksState(ud.checks || {});
+    setSlotsState(ud.slots || {});
+    setLastSync(new Date());
   }
 
-  async function persistFests(next) { setFests(next); await save(FEST_KEY, next); }
+  async function persistFests(next) {
+    setFests(next);
+  }
 
-  // ---- check toggle: fix race by computing next value locally then saving
+  async function addFest(fest) {
+    await saveFest(userId, fest);
+    setFests(prev => [...prev, fest]);
+  }
+
+  async function removeFest(id) {
+    await deleteFest(id);
+    setFests(prev => prev.filter(f => f.id !== id));
+  }
+
+  async function updateFest(updated) {
+    await saveFest(userId, updated);
+    setFests(prev => prev.map(f => f.id === updated.id ? updated : f));
+  }
+
+  async function updateNotes(n) {
+    setNotesState(n);
+    await saveUserData(userId, n, checks, slots);
+  }
+
   async function toggleCheck(ckey) {
     const next = { ...checks, [ckey]: !checks[ckey] };
-    setChecks(next);
-    await save(CHECKS_KEY, next);
+    setChecksState(next);
+    await saveUserData(userId, notes, next, slots);
+  }
+
+  async function updateSlots(sl) {
+    setSlotsState(sl);
+    await saveUserData(userId, notes, checks, sl);
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
   }
 
   if (!fests) return <Splash />;
@@ -120,15 +263,17 @@ export default function App() {
         {screen === "home" && (
           <Home
             fests={fests}
+            user={session.user}
             onOpen={(id) => { setFestId(id); setDayIdx(0); setArtIdx(0); setScreen("view"); }}
             onNew={() => setScreen("builder")}
-            onDelete={async (id) => { await persistFests(fests.filter(f => f.id !== id)); }}
+            onDelete={removeFest}
+            onLogout={logout}
           />
         )}
         {screen === "builder" && (
           <Builder
             onCancel={() => setScreen("home")}
-            onSave={async (obj) => { await persistFests([...fests, obj]); setScreen("home"); }}
+            onSave={async (obj) => { await addFest(obj); setScreen("home"); }}
           />
         )}
         {screen === "view" && fest && (
@@ -136,10 +281,10 @@ export default function App() {
             fest={fest}
             dayIdx={dayIdx} setDayIdx={(i) => { setDayIdx(i); setArtIdx(0); }}
             artIdx={artIdx} setArtIdx={setArtIdx}
-            notes={notes} setNotes={async (n) => { setNotes(n); await save(NOTES_KEY, n); }}
+            notes={notes} setNotes={updateNotes}
             checks={checks} toggleCheck={toggleCheck}
-            slots={slots} setSlots={async (sl) => { setSlots(sl); await save(SLOTS_KEY, sl); }}
-            onEditFest={async (updated) => { await persistFests(fests.map(f => f.id === updated.id ? updated : f)); }}
+            slots={slots} setSlots={updateSlots}
+            onEditFest={updateFest}
             onBack={() => setScreen("home")}
             onRefresh={refresh}
             lastSync={lastSync}
@@ -152,17 +297,36 @@ export default function App() {
 
 /* ---------- splash ---------- */
 function Splash() {
-  return <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontFamily: "monospace" }}>cargando…</div>;
+  return (
+    <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontFamily: "monospace" }}>
+      <Style />
+      cargando…
+    </div>
+  );
 }
 
 /* ---------- home ---------- */
-function Home({ fests, onOpen, onNew, onDelete }) {
+function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
   return (
     <div style={{ padding: "24px 16px 40px" }}>
-      <div style={{ fontSize: 11, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 4 }}>FOH HANDOVER</div>
-      <div style={{ fontSize: 28, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em", marginBottom: 24 }}>
-        TUS <span style={{ color: "#f59e0b" }}>FESTIVALES</span>
+      {/* header */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+        <div>
+          <div style={{ fontSize: 11, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 4 }}>FOH HANDOVER</div>
+          <div style={{ fontSize: 28, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em" }}>
+            TUS <span style={{ color: "#f59e0b" }}>FESTIVALES</span>
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          {user.user_metadata?.avatar_url && (
+            <img src={user.user_metadata.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid #e2e8f0" }} />
+          )}
+          <button onClick={onLogout} style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 8, color: "#94a3b8", fontSize: 10, padding: "4px 8px", cursor: "pointer" }}>
+            salir
+          </button>
+        </div>
       </div>
+
       {fests.map(f => {
         const total = f.days.reduce((s, d) => s + d.artists.length, 0);
         return (
@@ -293,7 +457,6 @@ function Builder({ onCancel, onSave }) {
                     }}>{a.presetOk ? "✓ OK" : "preset?"}</button>
                   </div>
 
-                  {/* campos extra */}
                   <div style={{ marginTop: 10 }}>
                     <div style={{ fontSize: 9, color: "#2563eb", letterSpacing: "0.1em", marginBottom: 6 }}>CAMPOS EXTRA</div>
                     {(a.extraSlots || []).map(s => (
@@ -306,7 +469,6 @@ function Builder({ onCancel, onSave }) {
                     <button onClick={() => addExtraSlot(di, ai)} style={{ ...S.addBtn, color: "#2563eb", borderColor: "#bfdbfe", background: "#eff6ff" }}>+ Campo</button>
                   </div>
 
-                  {/* notas previas */}
                   <BuilderNotes
                     comments={a.comments || []}
                     onAdd={t => addComment(di, ai, t)}
@@ -386,8 +548,6 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-
-      {/* top bar */}
       <div style={S.topBar}>
         <button onClick={onBack} style={S.backBtn}>‹</button>
         <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{fest.name}</div>
@@ -395,7 +555,6 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
         <button onClick={() => setShowShare(true)} style={{ ...S.syncBtn, marginLeft: 4 }}>⬆︎</button>
       </div>
 
-      {/* day tabs */}
       <div style={{ display: "flex", gap: 6, padding: "10px 12px", overflowX: "auto", background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
         {fest.days.map((d, i) => {
           const dn = d.artists.filter(a => checks[`${fest.id}__${d.id}__${a.id}`]).length;
@@ -414,7 +573,6 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
         })}
       </div>
 
-      {/* progress dots */}
       <div style={{ display: "flex", gap: 5, padding: "10px 16px", justifyContent: "center", flexWrap: "wrap", background: "#fff" }}>
         {artists.map((a, i) => {
           const ok = checks[`${fest.id}__${day.id}__${a.id}`];
@@ -431,7 +589,6 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
         }} />
       </div>
 
-      {/* artist card */}
       <div style={{ flex: 1, padding: "12px 14px 24px", background: "#f8fafc" }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {isAddScreen ? (
           <AddArtistScreen onAdd={addArtistToDay} onBack={() => setArtIdx(artists.length - 1)} />
@@ -442,7 +599,6 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
             boxShadow: done ? "0 0 0 4px #dcfce7" : "0 1px 8px rgba(0,0,0,0.07)",
             position: "relative", overflow: "hidden",
           }}>
-            {/* accent bar */}
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: sc, borderRadius: "20px 20px 0 0" }} />
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 8 }}>
@@ -462,7 +618,6 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
               <span style={{ fontSize: 12, color: "#334155", fontFamily: "monospace", fontWeight: 700 }}>{art.console || "—"}</span>
             </div>
 
-            {/* signal chain */}
             <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em", marginBottom: 8 }}>CADENA DE SEÑAL</div>
             <div style={{ display: "flex", alignItems: "stretch", marginBottom: 18 }}>
               <ChainBox label="CONEXIÓN" value={art.connection || "—"} color="#7c3aed" />
@@ -472,7 +627,6 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
               <ChainBox label="MESA" value={art.console || "—"} color="#334155" />
             </div>
 
-            {/* preset */}
             <div style={{
               display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, marginBottom: 12,
               background: art.presetOk ? "#f0fdf4" : "#f8fafc",
@@ -485,7 +639,6 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
               </div>
             </div>
 
-            {/* routing */}
             {(art.toLx || art.toMon) && (
               <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>
                 {art.toLx && <RouteChip icon="💡" label="TO LX" value={art.toLx} color="#ea580c" />}
@@ -493,7 +646,6 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
               </div>
             )}
 
-            {/* saved extra slots from builder */}
             {(art.extraSlots || []).filter(s => s.label).length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>
                 {(art.extraSlots || []).filter(s => s.label).map(s => (
@@ -502,7 +654,6 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
               </div>
             )}
 
-            {/* previous comments */}
             {(art.comments || []).length > 0 && (
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em", marginBottom: 6 }}>NOTAS PREVIAS</div>
@@ -512,17 +663,12 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
               </div>
             )}
 
-            {/* runtime extra slots */}
             <ExtraSlots slots={mySlots} onAdd={addSlot} onDel={delSlot} onEdit={editSlot} />
-
-            {/* FOH notes */}
             <FohNotes notes={myNotes} onAdd={addNote} onDel={delNote} />
           </div>
-
         )}
         {!isAddScreen && (
           <div style={{ marginTop: 14 }}>
-            {/* nav */}
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => go(-1)} disabled={artIdx === 0} style={{ ...S.navBtn, opacity: artIdx === 0 ? 0.3 : 1 }}>‹ Anterior</button>
               <button onClick={() => go(1)} style={S.navBtn}>{artIdx === artists.length - 1 ? "+ Nuevo artista ›" : "Siguiente ›"}</button>
@@ -594,14 +740,11 @@ function ShareModal({ fest, onClose }) {
           </div>
           <button onClick={onClose} style={S.iconBtn}>✕</button>
         </div>
-
         <div style={{ textAlign: "center", marginBottom: 16 }}>
           <img src={qrUrl} alt="QR" style={{ width: 220, height: 220, borderRadius: 12, border: "1px solid #e2e8f0" }} />
           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 8 }}>Escanea para importar el festival</div>
         </div>
-
         <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", marginBottom: 12, wordBreak: "break-all", fontSize: 10, color: "#64748b", maxHeight: 60, overflow: "hidden" }}>{url.slice(0, 120)}…</div>
-
         <button onClick={copy} style={{ ...S.bigBtn, marginTop: 0, background: copied ? "#16a34a" : "#0f172a" }}>
           {copied ? "✓ Copiado" : "Copiar URL"}
         </button>
