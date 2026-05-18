@@ -323,23 +323,46 @@ function Splash() {
 
 /* ---------- home ---------- */
 function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
-    <div style={{ padding: "28px 20px 48px" }}>
+    <div style={{ padding: "28px 20px 48px" }} onClick={() => menuOpen && setMenuOpen(false)}>
       {/* header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
-        <div>
+      <div style={{ position: "relative", marginBottom: 28 }}>
+        {/* avatar con dropdown */}
+        <div style={{ position: "absolute", top: 0, right: 0 }}>
+          <img
+            src={user.user_metadata?.avatar_url || "https://ui-avatars.com/api/?name=U&background=e2e8f0&color=64748b"}
+            alt=""
+            onClick={e => { e.stopPropagation(); setMenuOpen(o => !o); }}
+            style={{ width: 42, height: 42, borderRadius: "50%", border: "2px solid #e2e8f0", cursor: "pointer", display: "block" }}
+          />
+          {menuOpen && (
+            <div onClick={e => e.stopPropagation()} style={{
+              position: "absolute", right: 0, top: 50, background: "#fff",
+              border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+              padding: "6px", minWidth: 160, zIndex: 50,
+            }}>
+              <div style={{ padding: "8px 12px 10px", borderBottom: "1px solid #f1f5f9", marginBottom: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>{user.user_metadata?.full_name || user.email}</div>
+                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{user.email}</div>
+              </div>
+              <button onClick={onLogout} style={{
+                width: "100%", padding: "10px 12px", background: "none", border: "none",
+                borderRadius: 8, color: "#ef4444", fontSize: 13, cursor: "pointer",
+                textAlign: "left", fontFamily: "'JetBrains Mono',monospace",
+              }}>
+                Cerrar sesión
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* título centrado */}
+        <div style={{ textAlign: "center", paddingTop: 4 }}>
           <div style={{ fontSize: 12, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 4 }}>FOH HANDOVER</div>
-          <div style={{ fontSize: 34, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em", lineHeight: 1 }}>
+          <div style={{ fontSize: 36, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em", lineHeight: 1 }}>
             TUS <span style={{ color: "#f59e0b" }}>FESTIVALES</span>
           </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {user.user_metadata?.avatar_url && (
-            <img src={user.user_metadata.avatar_url} alt="" style={{ width: 38, height: 38, borderRadius: "50%", border: "2px solid #e2e8f0" }} />
-          )}
-          <button onClick={onLogout} style={{ background: "#f1f5f9", border: "none", borderRadius: 10, color: "#64748b", fontSize: 12, padding: "8px 12px", cursor: "pointer" }}>
-            Salir
-          </button>
         </div>
       </div>
 
