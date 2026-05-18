@@ -323,9 +323,10 @@ function Splash() {
 /* ---------- home ---------- */
 function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [festMenuId, setFestMenuId] = useState(null);
   return (
     <div style={{ height: "100dvh", display: "flex", flexDirection: "column", padding: "20px 20px 24px", overflow: "hidden" }}
-      onClick={() => menuOpen && setMenuOpen(false)}>
+      onClick={() => { menuOpen && setMenuOpen(false); festMenuId && setFestMenuId(null); }}>
 
       {/* header */}
       <div style={{ position: "relative", marginBottom: 20, flexShrink: 0 }}>
@@ -363,16 +364,23 @@ function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
       </div>
 
       {/* lista festivales — crece y hace scroll interno si hay muchos */}
+      {festMenuId && <div onClick={() => setFestMenuId(null)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />}
       <div style={{ flex: 1, overflowY: "auto", marginBottom: 14 }}>
         {fests.map(f => {
           const total = f.days.reduce((s, d) => s + d.artists.length, 0);
           return (
-            <div key={f.id} style={S.festCard} onClick={() => onOpen(f.id)}>
-              <div style={{ flex: 1, minWidth: 0 }}>
+            <div key={f.id} style={{ ...S.festCard, position: "relative", overflow: "visible" }} onClick={() => { setFestMenuId(null); onOpen(f.id); }}>
+              {/* gear */}
+              <button onClick={e => { e.stopPropagation(); setFestMenuId(festMenuId === f.id ? null : f.id); }} style={{ position: "absolute", top: 6, left: 8, background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#94a3b8", padding: 4, lineHeight: 1, zIndex: 2 }}>⚙️</button>
+              {festMenuId === f.id && (
+                <div onClick={e => e.stopPropagation()} style={{ position: "absolute", top: 30, left: 8, background: "#fff", borderRadius: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", border: "1px solid #e2e8f0", zIndex: 20, minWidth: 130, overflow: "hidden" }}>
+                  <button onClick={() => { setFestMenuId(null); if (window.confirm(`¿Borrar "${f.name}"?`)) onDelete(f.id); }} style={{ display: "block", width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 0, paddingLeft: 22 }}>
                 <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</div>
                 <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{f.days.length} días · {total} artistas</div>
               </div>
-              <button onClick={e => { e.stopPropagation(); onDelete(f.id); }} style={S.iconBtn}>🗑</button>
               <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>
             </div>
           );
