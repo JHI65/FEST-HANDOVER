@@ -364,6 +364,7 @@ function Main({ session }) {
             onOpen={(id) => { setFestId(id); setDayIdx(0); setArtIdx(0); setScreen("view"); }}
             onNew={() => setScreen("builder")}
             onDelete={removeFest}
+            onEdit={updateFest}
             onLogout={logout}
           />
         )}
@@ -402,10 +403,11 @@ function Splash() {
 }
 
 /* ---------- home ---------- */
-function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
+function Home({ fests, user, onOpen, onNew, onDelete, onEdit, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [confirmId, setConfirmId] = useState(null);
+  const [editFestId, setEditFestId] = useState(null);
 
   return (
     <div style={{ height: "100dvh", display: "flex", flexDirection: "column", padding: "20px 20px 24px", overflow: "hidden" }}
@@ -489,7 +491,20 @@ function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
               </div>
               {/* slot derecho — mismo ancho que el izquierdo */}
               <div style={{ width: 32, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {!editMode && <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>}
+                {editMode ? (
+                  <button
+                    onClick={e => { e.stopPropagation(); setEditFestId(f.id); }}
+                    style={{
+                      width: 28, height: 28, borderRadius: "50%", border: "none",
+                      background: "#f59e0b", color: "#fff", fontSize: 14, lineHeight: 1,
+                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                      boxShadow: "0 2px 8px rgba(245,158,11,0.4)",
+                      flexShrink: 0,
+                    }}
+                  >✏️</button>
+                ) : (
+                  <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>
+                )}
               </div>
             </div>
           );
@@ -524,6 +539,18 @@ function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
               </div>
             </div>
           </div>
+        );
+      })()}
+
+      {/* modal editar festival */}
+      {editFestId && (() => {
+        const fest = fests.find(f => f.id === editFestId);
+        return (
+          <FestEditModal
+            fest={fest}
+            onSave={updated => { onEdit(updated); setEditFestId(null); }}
+            onClose={() => setEditFestId(null)}
+          />
         );
       })()}
     </div>
@@ -1142,6 +1169,81 @@ function FohNotes({ notes, onAdd, onDel }) {
       ) : (
         <button onClick={() => setEditing(true)} style={{ ...S.addBtn, color: "#d97706", borderColor: "#fcd34d", background: "#fffbeb" }}>+ Añadir nota</button>
       )}
+    </div>
+  );
+}
+
+/* ---------- fest edit modal ---------- */
+function FestEditModal({ fest, onSave, onClose }) {
+  const [name, setName] = useState(fest.name);
+  const [days, setDays] = useState(fest.days.map(d => ({ ...d })));
+
+  function renameDay(i, label) {
+    const next = [...days];
+    next[i] = { ...next[i], label };
+    setDays(next);
+  }
+
+  function deleteDay(i) {
+    setDays(days.filter((_, idx) => idx !== i));
+  }
+
+  function save() {
+    if (!name.trim()) return;
+    onSave({ ...fest, name: name.trim(), days });
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "24px 20px 36px", width: "100%", maxWidth: 480 }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em" }}>EDITAR FESTIVAL</div>
+          <button onClick={onClose} style={S.iconBtn}>✕</button>
+        </div>
+
+        <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: "0.1em", marginBottom: 6 }}>NOMBRE</div>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          style={{ ...S.input, marginBottom: 20 }}
+          autoFocus
+        />
+
+        <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: "0.1em", marginBottom: 10 }}>DÍAS</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20, maxHeight: 220, overflowY: "auto" }}>
+          {days.map((d, i) => (
+            <div key={d.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                value={d.label}
+                onChange={e => renameDay(i, e.target.value)}
+                style={{ ...S.input, flex: 1, padding: "10px 12px" }}
+              />
+              <button
+                onClick={() => deleteDay(i)}
+                disabled={days.length <= 1}
+                style={{
+                  width: 34, height: 34, borderRadius: "50%", border: "none",
+                  background: days.length <= 1 ? "#f1f5f9" : "#ef4444",
+                  color: days.length <= 1 ? "#cbd5e1" : "#fff",
+                  fontSize: 18, cursor: days.length <= 1 ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                }}
+              >−</button>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 14, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: "#334155" }}>
+            Cancelar
+          </button>
+          <button onClick={save} disabled={!name.trim()} style={{ flex: 1, padding: "14px", background: "#0f172a", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed", fontFamily: "'JetBrains Mono',monospace", color: "#fff", opacity: name.trim() ? 1 : 0.4 }}>
+            Guardar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
