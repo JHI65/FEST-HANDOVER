@@ -267,17 +267,24 @@ function Main({ session }) {
     })();
   }, [userId]);
 
-  // Polling cada 3s — sincronización en tiempo real entre usuarios
+  // Realtime: recarga datos cuando cambia cualquier festival accesible
   useEffect(() => {
-    const timer = setInterval(async () => {
-      const f = await loadFests(userId);
-      const sd = mergeSharedFromFests(f);
-      setFests(prev => JSON.stringify(prev) === JSON.stringify(f) ? prev : f);
-      setNotesState(prev => JSON.stringify(prev) === JSON.stringify(sd.notes) ? prev : sd.notes);
-      setChecksState(prev => JSON.stringify(prev) === JSON.stringify(sd.checks) ? prev : sd.checks);
-      setSlotsState(prev => JSON.stringify(prev) === JSON.stringify(sd.slots) ? prev : sd.slots);
-    }, 3000);
-    return () => clearInterval(timer);
+    const channel = supabase
+      .channel("festivals-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "festivals" },
+        async () => {
+          const f = await loadFests(userId);
+          const sd = mergeSharedFromFests(f);
+          setFests(prev => JSON.stringify(prev) === JSON.stringify(f) ? prev : f);
+          setNotesState(prev => JSON.stringify(prev) === JSON.stringify(sd.notes) ? prev : sd.notes);
+          setChecksState(prev => JSON.stringify(prev) === JSON.stringify(sd.checks) ? prev : sd.checks);
+          setSlotsState(prev => JSON.stringify(prev) === JSON.stringify(sd.slots) ? prev : sd.slots);
+        }
+      )
+      .subscribe();
+    return () => supabase.removeChannel(channel);
   }, [userId]);
 
   async function refresh() {
