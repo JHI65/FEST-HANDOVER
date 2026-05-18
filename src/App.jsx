@@ -388,24 +388,30 @@ function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
           return (
             <div key={f.id} style={{ ...S.festCard, position: "relative", overflow: "visible" }}
               onClick={() => { if (!editMode) onOpen(f.id); }}>
-              {editMode && (
-                <button
-                  onClick={e => { e.stopPropagation(); setConfirmId(f.id); }}
-                  style={{
-                    position: "absolute", top: "50%", left: -14, transform: "translateY(-50%)",
-                    width: 28, height: 28, borderRadius: "50%", border: "none",
-                    background: "#ef4444", color: "#fff", fontSize: 20, lineHeight: 1,
-                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                    boxShadow: "0 2px 8px rgba(239,68,68,0.4)", zIndex: 5,
-                    fontWeight: 700,
-                  }}
-                >−</button>
-              )}
-              <div style={{ flex: 1, minWidth: 0, paddingLeft: editMode ? 8 : 0 }}>
+              {/* slot izquierdo — siempre ocupa el mismo espacio */}
+              <div style={{ width: 32, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {editMode && (
+                  <button
+                    onClick={e => { e.stopPropagation(); setConfirmId(f.id); }}
+                    style={{
+                      width: 28, height: 28, borderRadius: "50%", border: "none",
+                      background: "#ef4444", color: "#fff", fontSize: 20, lineHeight: 1,
+                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                      boxShadow: "0 2px 8px rgba(239,68,68,0.4)",
+                      fontWeight: 700, flexShrink: 0,
+                    }}
+                  >−</button>
+                )}
+              </div>
+              {/* nombre siempre centrado */}
+              <div style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
                 <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</div>
                 <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{f.days.length} días · {total} artistas</div>
               </div>
-              {!editMode && <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>}
+              {/* slot derecho — mismo ancho que el izquierdo */}
+              <div style={{ width: 32, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {!editMode && <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>}
+              </div>
             </div>
           );
         })}
