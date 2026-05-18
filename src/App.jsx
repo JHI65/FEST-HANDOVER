@@ -72,7 +72,7 @@ async function loadUserData(userId) {
     .from("user_data")
     .select("notes, checks, slots")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
   return data || { notes: {}, checks: {}, slots: {} };
 }
 
