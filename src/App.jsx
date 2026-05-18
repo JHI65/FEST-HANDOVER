@@ -589,29 +589,30 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-      <div style={S.topBar}>
-        <button onClick={onBack} style={S.backBtn}>‹</button>
-        <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{fest.name}</div>
-        <button onClick={onRefresh} style={S.syncBtn}>↻ {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : ""}</button>
-        <button onClick={() => setShowShare(true)} style={{ ...S.syncBtn, marginLeft: 4 }}>⬆︎</button>
-      </div>
-
-      <div style={{ display: "flex", gap: 6, padding: "10px 12px", overflowX: "auto", background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
-        {fest.days.map((d, i) => {
-          const dn = d.artists.filter(a => checks[`${fest.id}__${d.id}__${a.id}`]).length;
-          const active = i === dayIdx;
-          return (
-            <button key={d.id} onClick={() => setDayIdx(i)} style={{
-              flexShrink: 0, padding: "7px 14px", borderRadius: 20, fontSize: 12,
-              fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
-              whiteSpace: "nowrap", border: "none",
-              background: active ? "#0f172a" : "#f1f5f9",
-              color: active ? "#fff" : "#64748b",
-            }}>
-              {d.label} <span style={{ opacity: 0.6, fontSize: 10 }}>{dn}/{d.artists.length}</span>
-            </button>
-          );
-        })}
+      <div style={{ ...S.topBar, flexWrap: "wrap", rowGap: 8, padding: "10px 12px 8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+          <button onClick={onBack} style={S.backBtn}>‹</button>
+          <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{fest.name}</div>
+          <button onClick={onRefresh} style={S.syncBtn}>↻ {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : ""}</button>
+          <button onClick={() => setShowShare(true)} style={{ ...S.syncBtn, marginLeft: 4 }}>⬆︎</button>
+        </div>
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", width: "100%", paddingBottom: 2 }}>
+          {fest.days.map((d, i) => {
+            const dn = d.artists.filter(a => checks[`${fest.id}__${d.id}__${a.id}`]).length;
+            const active = i === dayIdx;
+            return (
+              <button key={d.id} onClick={() => setDayIdx(i)} style={{
+                flexShrink: 0, padding: "5px 12px", borderRadius: 20, fontSize: 12,
+                fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
+                whiteSpace: "nowrap", border: "none",
+                background: active ? "#0f172a" : "#f1f5f9",
+                color: active ? "#fff" : "#64748b",
+              }}>
+                {d.label} <span style={{ opacity: 0.6, fontSize: 10 }}>{dn}/{d.artists.length}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 5, padding: "10px 16px", justifyContent: "center", flexWrap: "wrap", background: "#fff" }}>
@@ -709,7 +710,7 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
           </div>
         )}
         {!isAddScreen && (
-          <div style={{ marginTop: 14 }}>
+          <div style={{ marginTop: 14, paddingBottom: "max(16px, env(safe-area-inset-bottom, 16px))" }}>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => go(-1)} disabled={artIdx === 0} style={{ ...S.navBtn, opacity: artIdx === 0 ? 0.3 : 1 }}>‹ Anterior</button>
               <button onClick={() => go(1)} style={S.navBtn}>{artIdx === artists.length - 1 ? "+ Nuevo artista ›" : "Siguiente ›"}</button>
@@ -906,7 +907,7 @@ const S = {
   artForm: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, marginBottom: 12 },
   addBtn: { width: "100%", padding: "14px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, color: "#64748b", fontSize: 14, cursor: "pointer", fontFamily: "monospace", marginTop: 8 },
   smBtn: { padding: "10px 16px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, color: "#334155", fontSize: 13, cursor: "pointer" },
-  topBar: { display: "flex", alignItems: "center", gap: 10, padding: "16px 16px 12px", position: "sticky", top: 0, background: "#fff", zIndex: 10, borderBottom: "1px solid #e2e8f0" },
+  topBar: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px 8px", position: "sticky", top: 0, background: "#fff", zIndex: 10, borderBottom: "1px solid #e2e8f0" },
   syncBtn: { background: "none", border: "1px solid #e2e8f0", borderRadius: 10, color: "#94a3b8", fontSize: 11, padding: "8px 11px", cursor: "pointer" },
   navBtn: { flex: 1, padding: "16px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, color: "#334155", fontSize: 14, cursor: "pointer", fontFamily: "monospace" },
 };
