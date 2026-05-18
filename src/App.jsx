@@ -684,7 +684,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
   if (editId) {
     const editArt = artists.find(a => a.id === editId);
     return (
-      <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
         <TopBar onBackBtn={() => setEditId(null)} />
         <div style={{ flex: 1, padding: "12px 14px 24px", background: "#f8fafc", overflowY: "auto" }}>
           <AddArtistScreen initial={editArt} onAdd={saveEditArtist} onBack={() => setEditId(null)} />
@@ -696,7 +696,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
 
   /* ---- add screen ---- */
   if (showAdd) return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
       <TopBar onBackBtn={() => setShowAdd(false)} />
       <div style={{ flex: 1, padding: "12px 14px 24px", background: "#f8fafc", overflowY: "auto" }}>
         <AddArtistScreen onAdd={addArtistToDay} onBack={() => setShowAdd(false)} />
@@ -707,7 +707,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
 
   /* ---- detail screen ---- */
   if (art) return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
       <TopBar onBackBtn={() => setSelectedId(null)} />
       <div style={{ flex: 1, padding: "12px 14px", background: "#f8fafc", overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
         <div style={{
@@ -790,7 +790,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
 
   /* ---- list screen ---- */
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
       <TopBar onBackBtn={onBack} />
       <div style={{ flex: 1, padding: "12px 14px", background: "#f8fafc", overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
         {artists.length === 0 && (
