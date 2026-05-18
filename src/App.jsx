@@ -724,9 +724,9 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
         }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: sc, borderRadius: "20px 20px 0 0" }} />
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", marginTop: 8, gap: 8 }}>
             {/* gear: editar / borrar artista */}
-            <div style={{ position: "relative" }}>
+            <div style={{ position: "relative", flexShrink: 0 }}>
               <button onClick={() => setArtGearOpen(o => !o)} style={{
                 background: artGearOpen ? "#f1f5f9" : "none", border: "1px solid #e2e8f0",
                 borderRadius: 10, padding: "6px 10px", cursor: "pointer", fontSize: 15, lineHeight: 1,
@@ -743,7 +743,10 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-end" }}>
+            {/* nombre centrado */}
+            <div style={{ flex: 1, textAlign: "center", fontSize: 36, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.02em", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{art.artist || "—"}</div>
+            {/* checks SC / SHOW */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-end", flexShrink: 0 }}>
               <button onClick={() => toggleCheck(ckeysc)} style={{
                 padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer",
                 border: `1.5px solid ${scDone ? "#16a34a" : "#e2e8f0"}`,
@@ -761,12 +764,10 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
             </div>
           </div>
 
-          <div style={{ fontSize: 36, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.02em", lineHeight: 1, margin: "8px 0 4px" }}>{art.artist || "—"}</div>
-
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f8fafc", border: "1px solid #e2e8f0", padding: "4px 12px", borderRadius: 20, marginBottom: 20 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, marginBottom: 20 }}><div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f8fafc", border: "1px solid #e2e8f0", padding: "4px 12px", borderRadius: 20 }}>
             <span style={{ fontSize: 13 }}>🎛️</span>
             <span style={{ fontSize: 12, color: "#334155", fontFamily: "monospace", fontWeight: 700 }}>{art.console || "—"}</span>
-          </div>
+          </div></div>
 
           <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em", marginBottom: 8 }}>CADENA DE SEÑAL</div>
           <div style={{ display: "flex", alignItems: "stretch", marginBottom: 18 }}>
