@@ -537,6 +537,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
   const [selectedId, setSelectedId] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [menuOpenId, setMenuOpenId] = useState(null);
   const day = fest.days[dayIdx];
   const artists = day.artists;
   const art = artists.find(a => a.id === selectedId) || null;
@@ -729,6 +730,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
         {artists.length === 0 && (
           <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
         )}
+        {menuOpenId && <div onClick={() => setMenuOpenId(null)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {artists.map((a, i) => {
             const k = `${fest.id}__${day.id}__${a.id}`;
@@ -739,25 +741,34 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
                 background: "#fff", borderRadius: 16,
                 border: `1.5px solid ${ok ? "#86efac" : color + "33"}`,
                 boxShadow: ok ? "0 0 0 3px #dcfce7" : "0 1px 6px rgba(0,0,0,0.06)",
-                position: "relative", overflow: "hidden",
+                position: "relative", overflow: "visible",
               }}>
                 <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: color, borderRadius: "16px 0 0 16px" }} />
-                {/* main tap area */}
-                <div onClick={() => setSelectedId(a.id)} style={{ padding: "14px 16px 10px 20px", cursor: "pointer" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ fontSize: 26, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.03em", lineHeight: 1.1, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
-                    {ok && <span style={{ fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "2px 8px", flexShrink: 0, marginLeft: 8 }}>✓ OK</span>}
+                {/* gear button */}
+                <button
+                  onClick={e => { e.stopPropagation(); setMenuOpenId(menuOpenId === a.id ? null : a.id); }}
+                  style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#94a3b8", padding: 4, lineHeight: 1, zIndex: 2 }}
+                >⚙️</button>
+                {/* dropdown menu */}
+                {menuOpenId === a.id && (
+                  <div onClick={e => e.stopPropagation()} style={{
+                    position: "absolute", top: 32, right: 8, background: "#fff", borderRadius: 12,
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.12)", border: "1px solid #e2e8f0",
+                    zIndex: 20, minWidth: 130, overflow: "hidden",
+                  }}>
+                    <button onClick={() => { setMenuOpenId(null); setEditId(a.id); }} style={{ display: "block", width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#334155", cursor: "pointer", fontFamily: "monospace" }}>✏️ Editar</button>
+                    <div style={{ height: 1, background: "#f1f5f9" }} />
+                    <button onClick={() => { setMenuOpenId(null); if (window.confirm(`¿Borrar "${a.artist}"?`)) deleteArtist(a.id); }} style={{ display: "block", width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
                   </div>
-                  <div style={{ fontSize: 11, color: "#64748b", fontFamily: "monospace", marginTop: 4, display: "flex", gap: 10 }}>
+                )}
+                {/* main tap area */}
+                <div onClick={() => { setMenuOpenId(null); setSelectedId(a.id); }} style={{ padding: "14px 36px 14px 20px", cursor: "pointer" }}>
+                  <div style={{ fontSize: 26, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.03em", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
+                  <div style={{ fontSize: 11, color: "#64748b", fontFamily: "monospace", marginTop: 4, display: "flex", gap: 10, alignItems: "center" }}>
                     <span>🎛️ {a.console || "—"}</span>
                     {a.signal && <span style={{ color }}>{a.signal}</span>}
+                    {ok && <span style={{ fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "1px 7px", marginLeft: "auto" }}>✓ OK</span>}
                   </div>
-                </div>
-                {/* action row */}
-                <div style={{ display: "flex", borderTop: "1px solid #f1f5f9" }}>
-                  <button onClick={() => setEditId(a.id)} style={{ flex: 1, padding: "8px", background: "none", border: "none", fontSize: 12, color: "#64748b", cursor: "pointer", fontFamily: "monospace" }}>✏️ Editar</button>
-                  <div style={{ width: 1, background: "#f1f5f9" }} />
-                  <button onClick={() => { if (window.confirm(`¿Borrar "${a.artist}"?`)) deleteArtist(a.id); }} style={{ flex: 1, padding: "8px", background: "none", border: "none", fontSize: 12, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
                 </div>
               </div>
             );
