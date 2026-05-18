@@ -3,30 +3,19 @@ import { supabase } from "./supabase";
 
 /* ---------- seed ---------- */
 const SEED = [{
-  id: "cooltural25", name: "COOLTURAL FEST 25",
+  id: "ejemplo_fest", name: "FESTIVAL EJEMPLO",
   days: [
     {
-      id: "fri", label: "VIE 22", artists: [
-        { id: "a1", artist: "ALIZZZ", console: "SSL100", connection: "OPTO DUO 1/2 (point-point)", signal: "AES 1/2", preset: "ALIZZZ", presetOk: true, toLx: "", toMon: "", comments: ["Posibilidad de dejar mesa de Alizzz en FOH para mañana con Amaia", "Señal de Video Direct → CAM FOH R (desde FOH)", "DIGICO Local cambiada a MADI", "Hay que subir la PM5 para arriba", "Cubre mesa debajo de tarima de LX", "Corriente de Shout sale desde Digico"], extraSlots: [] },
-        { id: "a2", artist: "FRANZ FERDINAND", console: "Quantum 338", connection: "HMA 1/2 (ALL DAY)", signal: "AES 3/4", preset: "INITIAL", presetOk: false, toLx: "", toMon: "CH10 to MON WRLD (COMMS) console left", comments: [], extraSlots: [] },
-        { id: "a3", artist: "LIA KALI", console: "SD9 (SR)", connection: "RJ 3/4 & 1 SP", signal: "AES 1/2", preset: "INITIAL", presetOk: false, toLx: "TIMECODE", toMon: "", comments: [], extraSlots: [] },
-        { id: "a4", artist: "NIÑA POLACA", console: "SD10 Local", connection: "MADI 1-4 Festival Box", signal: "XLR 1-4", preset: "INITIAL", presetOk: false, toLx: "", toMon: "", comments: [], extraSlots: [] },
+      id: "day1", label: "DÍA 1", artists: [
+        { id: "s1", artist: "ARTISTA A", console: "SSL 9000", connection: "OPTO DUO 1/2 (point-point)", signal: "AES 1/2", preset: "ARTISTA A", presetOk: true, toLx: "SMPT 1 (naranja)", toMon: "", comments: ["Mesa compartida con artista siguiente", "Señal de video directo desde FOH"], extraSlots: [{ id: "e1", label: "RF", value: "Shure ULXD4Q · CH 38-40" }] },
+        { id: "s2", artist: "ARTISTA B", console: "DiGiCo SD10", connection: "MADI 1-4 Festival Box", signal: "MADI", preset: "INITIAL", presetOk: false, toLx: "TIMECODE", toMon: "CH16 → MON WORLD", comments: [], extraSlots: [] },
+        { id: "s3", artist: "ARTISTA C", console: "Avid S6L", connection: "HMA 1/2 (ALL DAY)", signal: "AES 3/4", preset: "INITIAL", presetOk: false, toLx: "", toMon: "", comments: [], extraSlots: [] },
       ]
     },
     {
-      id: "sat", label: "SÁB 23", artists: [
-        { id: "b1", artist: "AMAIA", console: "SSL100", connection: "OPTO DUO 1/2 (point-point)", signal: "AES 3/4", preset: "ALIZZZ", presetOk: true, toLx: "SMPT 1 (naranja)", toMon: "", comments: ["PM5 x Dante → Comparte GAIN - RIO", "Amaia → OPTO DUO nuestro", "RJ 1-4 directos preparados para Siloé"], extraSlots: [] },
-        { id: "b2", artist: "ELYELLA", console: "SD10 Local", connection: "MADI 1-4 FB", signal: "XLR 1-4", preset: "INITIAL", presetOk: false, toLx: "", toMon: "", comments: [], extraSlots: [] },
-        { id: "b3", artist: "MALDITA NEREA", console: "PM5 Local", connection: "RJ 3/4 SP (Festival Box)", signal: "AES 1/2", preset: "INITIAL", presetOk: false, toLx: "SMPT 1 & 2 (amarillo)", toMon: "", comments: [], extraSlots: [] },
-        { id: "b4", artist: "SILOÉ", console: "DM7", connection: "—", signal: "AES 1/2", preset: "INITIAL", presetOk: false, toLx: "", toMon: "", comments: [], extraSlots: [] },
-      ]
-    },
-    {
-      id: "sun", label: "DOM 24", artists: [
-        { id: "c1", artist: "DUNCAN DHU", console: "MIDAS M32", connection: "RJ 1 & 2 SP", signal: "XLR 1-4", preset: "DUNCAN DHU", presetOk: true, toLx: "", toMon: "", comments: ["Nuestro TB pasa a ser Shout / Micro Shout lo usa RAULE para TB suyo", "Envío a Subtítulos desde Prodigy OUT 3"], extraSlots: [] },
-        { id: "c2", artist: "RAULE", console: "SD10 Local", connection: "MADI 1-4 FB", signal: "AES 1/2", preset: "-1dB en SUB", presetOk: false, toLx: "SMPT 1 & 2 · CLICK - LOCAL OUT 3", toMon: "TB FOH - LOCAL IN 8", comments: [], extraSlots: [] },
-        { id: "c3", artist: "CRYSTAL FIGHTERS", console: "PM5 Local", connection: "OPTO DUO (anillo)", signal: "AES 3/4", preset: "INITIAL", presetOk: false, toLx: "", toMon: "", comments: [], extraSlots: [] },
-        { id: "c4", artist: "ALCALÁ NORTE", console: "SD10 Local", connection: "MADI 1-4 FB", signal: "AES 1/2", preset: "INITIAL", presetOk: false, toLx: "", toMon: "", comments: [], extraSlots: [] },
+      id: "day2", label: "DÍA 2", artists: [
+        { id: "s4", artist: "ARTISTA D", console: "Yamaha PM5", connection: "RJ 1/2 SP (Festival Box)", signal: "AES 1/2", preset: "ARTISTA D", presetOk: true, toLx: "SMPT 1 & 2", toMon: "", comments: ["Comparte GAIN con monitor"], extraSlots: [] },
+        { id: "s5", artist: "ARTISTA E", console: "DiGiCo SD7", connection: "OPTO DUO (anillo)", signal: "AES 3/4", preset: "INITIAL", presetOk: false, toLx: "", toMon: "", comments: [], extraSlots: [{ id: "e2", label: "IEM", value: "Sennheiser 2000 · CH 28" }] },
       ]
     },
   ],
@@ -177,8 +166,14 @@ function Main({ session }) {
 
       let f = await loadFests(userId);
 
+      // Reemplazar seed antiguo si existe
+      const oldSeedId = "cooltural25";
+      if (f.some(x => x.id === oldSeedId)) {
+        await deleteFest(oldSeedId);
+        f = f.filter(x => x.id !== oldSeedId);
+      }
+
       if (f.length === 0) {
-        // Seed initial festival for new users
         for (const fest of SEED) await saveFest(userId, fest);
         f = await loadFests(userId);
       }
