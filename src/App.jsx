@@ -539,6 +539,21 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
   const artists = day.artists;
   const art = artists[artIdx];
   const touchX = useRef(null);
+  const touchY = useRef(null);
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const handler = (e) => {
+      if (touchX.current == null) return;
+      const dx = Math.abs(e.touches[0].clientX - touchX.current);
+      const dy = Math.abs(e.touches[0].clientY - touchY.current);
+      if (dy > dx) e.preventDefault();
+    };
+    el.addEventListener("touchmove", handler, { passive: false });
+    return () => el.removeEventListener("touchmove", handler);
+  }, []);
 
   const isAddScreen = artIdx === artists.length;
 
@@ -564,7 +579,7 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
     await onEditFest(updatedFest);
     setArtIdx(updatedDays[dayIdx].artists.length - 1);
   }
-  function onTouchStart(e) { touchX.current = e.touches[0].clientX; }
+  function onTouchStart(e) { touchX.current = e.touches[0].clientX; touchY.current = e.touches[0].clientY; }
   function onTouchEnd(e) {
     if (touchX.current == null) return;
     const dx = e.changedTouches[0].clientX - touchX.current;
@@ -631,7 +646,7 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
         }} />
       </div>
 
-      <div style={{ flex: 1, padding: "12px 14px 24px", background: "#f8fafc" }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div ref={scrollRef} style={{ flex: 1, padding: "12px 14px 24px", background: "#f8fafc" }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {isAddScreen ? (
           <AddArtistScreen onAdd={addArtistToDay} onBack={() => setArtIdx(artists.length - 1)} />
         ) : (
