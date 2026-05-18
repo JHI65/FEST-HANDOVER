@@ -536,6 +536,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
   const [showShare, setShowShare] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [editId, setEditId] = useState(null);
   const day = fest.days[dayIdx];
   const artists = day.artists;
   const art = artists.find(a => a.id === selectedId) || null;
@@ -552,6 +553,19 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
     await onEditFest({ ...fest, days: updatedDays });
     setShowAdd(false);
     setSelectedId(newArt.id);
+  }
+
+  async function saveEditArtist(fields) {
+    const updatedDays = fest.days.map((d, i) => i === dayIdx ? {
+      ...d, artists: d.artists.map(a => a.id === editId ? { ...a, ...fields } : a)
+    } : d);
+    await onEditFest({ ...fest, days: updatedDays });
+    setEditId(null);
+  }
+
+  async function deleteArtist(artId) {
+    const updatedDays = fest.days.map((d, i) => i === dayIdx ? { ...d, artists: d.artists.filter(a => a.id !== artId) } : d);
+    await onEditFest({ ...fest, days: updatedDays });
   }
 
   function addNote(text) {
@@ -571,7 +585,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
     <div style={{ ...S.topBar, flexWrap: "wrap", rowGap: 8, padding: "10px 12px 8px" }}>
       <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
         <button onClick={onBackBtn} style={S.backBtn}>‹</button>
-        <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{fest.name}</div>
+        <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{fest.name}</div>
         <button onClick={() => setShowShare(true)} style={S.syncBtn}>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="currentColor" strokeWidth="2"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="currentColor" strokeWidth="2"/></svg>
         </button>
@@ -598,6 +612,20 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
       </div>
     </div>
   );
+
+  /* ---- edit screen ---- */
+  if (editId) {
+    const editArt = artists.find(a => a.id === editId);
+    return (
+      <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+        <TopBar onBackBtn={() => setEditId(null)} />
+        <div style={{ flex: 1, padding: "12px 14px 24px", background: "#f8fafc", overflowY: "auto" }}>
+          <AddArtistScreen initial={editArt} onAdd={saveEditArtist} onBack={() => setEditId(null)} />
+        </div>
+        {showShare && <ShareModal fest={fest} onClose={() => setShowShare(false)} />}
+      </div>
+    );
+  }
 
   /* ---- add screen ---- */
   if (showAdd) return (
@@ -707,24 +735,29 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
             const ok = !!checks[k];
             const color = sigColor(a.signal);
             return (
-              <div key={a.id} onClick={() => setSelectedId(a.id)} style={{
-                background: "#fff", borderRadius: 16, padding: "14px 16px",
+              <div key={a.id} style={{
+                background: "#fff", borderRadius: 16,
                 border: `1.5px solid ${ok ? "#86efac" : color + "33"}`,
                 boxShadow: ok ? "0 0 0 3px #dcfce7" : "0 1px 6px rgba(0,0,0,0.06)",
-                display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
                 position: "relative", overflow: "hidden",
               }}>
                 <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: color, borderRadius: "16px 0 0 16px" }} />
-                <div style={{ marginLeft: 4, flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.03em", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
-                  <div style={{ fontSize: 11, color: "#64748b", fontFamily: "monospace", marginTop: 3, display: "flex", gap: 10 }}>
+                {/* main tap area */}
+                <div onClick={() => setSelectedId(a.id)} style={{ padding: "14px 16px 10px 20px", cursor: "pointer" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ fontSize: 26, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.03em", lineHeight: 1.1, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
+                    {ok && <span style={{ fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "2px 8px", flexShrink: 0, marginLeft: 8 }}>✓ OK</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748b", fontFamily: "monospace", marginTop: 4, display: "flex", gap: 10 }}>
                     <span>🎛️ {a.console || "—"}</span>
                     {a.signal && <span style={{ color }}>{a.signal}</span>}
                   </div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                  {ok && <span style={{ fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "2px 8px" }}>✓ OK</span>}
-                  <span style={{ fontSize: 10, color: "#94a3b8" }}>{i + 1}/{artists.length}</span>
+                {/* action row */}
+                <div style={{ display: "flex", borderTop: "1px solid #f1f5f9" }}>
+                  <button onClick={() => setEditId(a.id)} style={{ flex: 1, padding: "8px", background: "none", border: "none", fontSize: 12, color: "#64748b", cursor: "pointer", fontFamily: "monospace" }}>✏️ Editar</button>
+                  <div style={{ width: 1, background: "#f1f5f9" }} />
+                  <button onClick={() => { if (window.confirm(`¿Borrar "${a.artist}"?`)) deleteArtist(a.id); }} style={{ flex: 1, padding: "8px", background: "none", border: "none", fontSize: 12, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
                 </div>
               </div>
             );
@@ -738,9 +771,10 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
 }
 
 /* ---------- small components ---------- */
-function AddArtistScreen({ onAdd, onBack }) {
-  const [f, setF] = useState({ artist: "", console: "", connection: "", signal: "", preset: "INITIAL", toLx: "", toMon: "" });
+function AddArtistScreen({ onAdd, onBack, initial }) {
+  const [f, setF] = useState(initial ? { artist: initial.artist || "", console: initial.console || "", connection: initial.connection || "", signal: initial.signal || "", preset: initial.preset || "INITIAL", toLx: initial.toLx || "", toMon: initial.toMon || "" } : { artist: "", console: "", connection: "", signal: "", preset: "INITIAL", toLx: "", toMon: "" });
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
+  const isEdit = !!initial;
 
   async function confirm() {
     if (!f.artist.trim()) return;
@@ -750,10 +784,10 @@ function AddArtistScreen({ onAdd, onBack }) {
   return (
     <div style={{ background: "#fff", borderRadius: 20, padding: 20, border: "2px dashed #e2e8f0", boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: "#fef9c3", border: "1px solid #fde68a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>+</div>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: isEdit ? "#ede9fe" : "#fef9c3", border: `1px solid ${isEdit ? "#c4b5fd" : "#fde68a"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{isEdit ? "✏️" : "+"}</div>
         <div>
-          <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em" }}>NUEVO ARTISTA</div>
-          <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 700 }}>Añadir al día</div>
+          <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em" }}>{isEdit ? "EDITAR ARTISTA" : "NUEVO ARTISTA"}</div>
+          <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 700 }}>{isEdit ? f.artist || "—" : "Añadir al día"}</div>
         </div>
       </div>
       <input value={f.artist} onChange={e => set("artist", e.target.value)} placeholder="Nombre artista *" style={{ ...S.input, marginBottom: 8 }} autoFocus />
@@ -768,7 +802,7 @@ function AddArtistScreen({ onAdd, onBack }) {
       </div>
       <input value={f.preset} onChange={e => set("preset", e.target.value)} placeholder="Preset" style={{ ...S.input, marginBottom: 14 }} />
       <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={confirm} disabled={!f.artist.trim()} style={{ ...S.bigBtn, flex: 1, padding: "13px", marginTop: 0, opacity: f.artist.trim() ? 1 : 0.4 }}>Guardar artista</button>
+        <button onClick={confirm} disabled={!f.artist.trim()} style={{ ...S.bigBtn, flex: 1, padding: "13px", marginTop: 0, opacity: f.artist.trim() ? 1 : 0.4 }}>{isEdit ? "Guardar cambios" : "Guardar artista"}</button>
         <button onClick={onBack} style={{ ...S.navBtn, flex: 0.5 }}>‹ Volver</button>
       </div>
     </div>
