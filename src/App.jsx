@@ -611,7 +611,11 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
   const art = artists.find(a => a.id === selectedId) || null;
 
   const ckey = art ? `${fest.id}__${day.id}__${art.id}` : null;
-  const done = ckey ? !!checks[ckey] : false;
+  const ckeysc = ckey ? `${ckey}__sc` : null;
+  const ckeyshow = ckey ? `${ckey}__show` : null;
+  const scDone = ckeysc ? !!checks[ckeysc] : false;
+  const showDone = ckeyshow ? !!checks[ckeyshow] : false;
+  const done = scDone && showDone;
   const myNotes = ckey ? (notes[ckey] || []) : [];
   const mySlots = ckey ? (slots[ckey] || []) : [];
   const sc = art ? sigColor(art.signal) : "#64748b";
@@ -662,7 +666,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
       <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", paddingBottom: 2 }}>
         <div style={{ display: "flex", gap: 6, overflowX: "auto", flex: 1 }}>
           {fest.days.map((d, i) => {
-            const dn = d.artists.filter(a => checks[`${fest.id}__${d.id}__${a.id}`]).length;
+            const dn = d.artists.filter(a => checks[`${fest.id}__${d.id}__${a.id}__sc`] && checks[`${fest.id}__${d.id}__${a.id}__show`]).length;
             const active = i === dayIdx;
             return (
               <button key={d.id} onClick={() => { setDayIdx(i); setSelectedId(null); setShowAdd(false); }} style={{
@@ -739,12 +743,22 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
                 </div>
               )}
             </div>
-            <button onClick={() => toggleCheck(ckey)} style={{
-              padding: "7px 14px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer", border: "none",
-              background: done ? "#16a34a" : "#f1f5f9",
-              color: done ? "#fff" : "#64748b",
-              transition: "all 0.2s",
-            }}>{done ? "✓ LISTO" : "marcar OK"}</button>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => toggleCheck(ckeysc)} style={{
+                padding: "7px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                border: `1.5px solid ${scDone ? "#16a34a" : "#e2e8f0"}`,
+                background: scDone ? "#16a34a" : "#f8fafc",
+                color: scDone ? "#fff" : "#94a3b8",
+                transition: "all 0.2s", fontFamily: "'JetBrains Mono',monospace",
+              }}>{scDone ? "✓" : "○"} SC</button>
+              <button onClick={() => toggleCheck(ckeyshow)} style={{
+                padding: "7px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                border: `1.5px solid ${showDone ? "#16a34a" : "#e2e8f0"}`,
+                background: showDone ? "#16a34a" : "#f8fafc",
+                color: showDone ? "#fff" : "#94a3b8",
+                transition: "all 0.2s", fontFamily: "'JetBrains Mono',monospace",
+              }}>{showDone ? "✓" : "○"} SHOW</button>
+            </div>
           </div>
 
           <div style={{ fontSize: 36, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.02em", lineHeight: 1, margin: "12px 0 4px" }}>{art.artist || "—"}</div>
@@ -838,7 +852,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {artists.map((a, i) => {
             const k = `${fest.id}__${day.id}__${a.id}`;
-            const ok = !!checks[k];
+            const ok = !!checks[`${k}__sc`] && !!checks[`${k}__show`];
             const color = sigColor(a.signal);
             return (
               <div key={a.id} onClick={() => setSelectedId(a.id)} style={{
