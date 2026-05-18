@@ -605,13 +605,17 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       <div style={{ ...S.topBar, flexWrap: "wrap", rowGap: 8, padding: "10px 12px 8px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+        {/* Row 1: back | festival name (centered) | share */}
+        <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
           <button onClick={onBack} style={S.backBtn}>‹</button>
           <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{fest.name}</div>
-          <button onClick={onRefresh} style={S.syncBtn}>↻ {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : ""}</button>
-          <button onClick={() => setShowShare(true)} style={{ ...S.syncBtn, marginLeft: 4 }}>⬆︎</button>
+          <button onClick={() => setShowShare(true)} style={S.syncBtn}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="currentColor" strokeWidth="2"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="currentColor" strokeWidth="2"/></svg>
+          </button>
         </div>
-        <div style={{ display: "flex", gap: 6, overflowX: "auto", width: "100%", paddingBottom: 2 }}>
+        {/* Row 2: day pills + sync time on the right */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", paddingBottom: 2 }}>
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", flex: 1 }}>
           {fest.days.map((d, i) => {
             const dn = d.artists.filter(a => checks[`${fest.id}__${d.id}__${a.id}`]).length;
             const active = i === dayIdx;
@@ -627,6 +631,8 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
               </button>
             );
           })}
+          </div>
+          <button onClick={onRefresh} style={{ ...S.syncBtn, flexShrink: 0 }}>↻ {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : ""}</button>
         </div>
       </div>
 
