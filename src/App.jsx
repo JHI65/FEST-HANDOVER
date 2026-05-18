@@ -328,53 +328,40 @@ function Splash() {
 
 /* ---------- home ---------- */
 function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
-  const name = user.user_metadata?.full_name?.split(" ")[0] || user.email?.split("@")[0] || "";
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-      {/* top bar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 12px", borderBottom: "1px solid #e2e8f0", background: "#fff" }}>
-        <div style={{ fontSize: 13, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.1em" }}>FOH HANDOVER</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{ padding: "24px 16px 40px" }}>
+      {/* header */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+        <div>
+          <div style={{ fontSize: 11, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 4 }}>FOH HANDOVER</div>
+          <div style={{ fontSize: 28, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em" }}>
+            TUS <span style={{ color: "#f59e0b" }}>FESTIVALES</span>
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
           {user.user_metadata?.avatar_url && (
-            <img src={user.user_metadata.avatar_url} alt="" style={{ width: 28, height: 28, borderRadius: "50%", border: "2px solid #e2e8f0" }} />
+            <img src={user.user_metadata.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid #e2e8f0" }} />
           )}
-          <span style={{ fontSize: 12, color: "#64748b" }}>{name}</span>
-          <button onClick={onLogout} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, color: "#64748b", fontSize: 11, padding: "5px 10px", cursor: "pointer" }}>
-            Salir
+          <button onClick={onLogout} style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 8, color: "#94a3b8", fontSize: 10, padding: "4px 8px", cursor: "pointer" }}>
+            salir
           </button>
         </div>
       </div>
 
-      {/* content */}
-      <div style={{ flex: 1, padding: "24px 16px 32px" }}>
-        <div style={{ fontSize: 11, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 4 }}>TUS</div>
-        <div style={{ fontSize: 36, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em", marginBottom: 24 }}>
-          <span style={{ color: "#f59e0b" }}>FESTIVALES</span>
-        </div>
-
-        {fests.length === 0 && (
-          <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, padding: "40px 0" }}>
-            No tienes festivales aún.<br />Crea uno abajo.
-          </div>
-        )}
-
-        {fests.map(f => {
-          const total = f.days.reduce((s, d) => s + d.artists.length, 0);
-          const done = f.days.reduce((s, d) => s, 0);
-          return (
-            <div key={f.id} style={S.festCard} onClick={() => onOpen(f.id)}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 17, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</div>
-                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{f.days.length} días · {total} artistas</div>
-              </div>
-              <button onClick={e => { e.stopPropagation(); onDelete(f.id); }} style={{ ...S.iconBtn, fontSize: 18, padding: "6px 8px" }}>🗑</button>
-              <span style={{ color: "#cbd5e1", fontSize: 20, paddingLeft: 4 }}>›</span>
+      {fests.map(f => {
+        const total = f.days.reduce((s, d) => s + d.artists.length, 0);
+        return (
+          <div key={f.id} style={S.festCard} onClick={() => onOpen(f.id)}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em" }}>{f.name}</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{f.days.length} días · {total} artistas</div>
             </div>
-          );
-        })}
-
-        <button onClick={onNew} style={{ ...S.bigBtn, marginTop: 16 }}>+ CREAR FESTIVAL</button>
-      </div>
+            <button onClick={e => { e.stopPropagation(); onDelete(f.id); }} style={S.iconBtn}>🗑</button>
+            <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>
+          </div>
+        );
+      })}
+      <button onClick={onNew} style={S.bigBtn}>+ CREAR FESTIVAL</button>
     </div>
   );
 }
