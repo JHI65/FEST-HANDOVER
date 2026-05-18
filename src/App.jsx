@@ -743,25 +743,25 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", gap: 6 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-end" }}>
               <button onClick={() => toggleCheck(ckeysc)} style={{
-                padding: "7px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer",
                 border: `1.5px solid ${scDone ? "#16a34a" : "#e2e8f0"}`,
                 background: scDone ? "#16a34a" : "#f8fafc",
                 color: scDone ? "#fff" : "#94a3b8",
-                transition: "all 0.2s", fontFamily: "'JetBrains Mono',monospace",
+                transition: "all 0.2s", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap",
               }}>{scDone ? "✓" : "○"} SC</button>
               <button onClick={() => toggleCheck(ckeyshow)} style={{
-                padding: "7px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer",
                 border: `1.5px solid ${showDone ? "#16a34a" : "#e2e8f0"}`,
                 background: showDone ? "#16a34a" : "#f8fafc",
                 color: showDone ? "#fff" : "#94a3b8",
-                transition: "all 0.2s", fontFamily: "'JetBrains Mono',monospace",
+                transition: "all 0.2s", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap",
               }}>{showDone ? "✓" : "○"} SHOW</button>
             </div>
           </div>
 
-          <div style={{ fontSize: 36, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.02em", lineHeight: 1, margin: "12px 0 4px" }}>{art.artist || "—"}</div>
+          <div style={{ fontSize: 36, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.02em", lineHeight: 1, margin: "8px 0 4px" }}>{art.artist || "—"}</div>
 
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f8fafc", border: "1px solid #e2e8f0", padding: "4px 12px", borderRadius: 20, marginBottom: 20 }}>
             <span style={{ fontSize: 13 }}>🎛️</span>
