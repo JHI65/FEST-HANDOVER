@@ -97,9 +97,11 @@ function LoginScreen() {
   async function loginWithGoogle() {
     setLoading(true);
     setError(null);
+    const festParam = new URLSearchParams(window.location.search).get("fest");
+    const redirectTo = window.location.origin + "/FEST-HANDOVER/" + (festParam ? `?fest=${festParam}` : "");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin + "/FEST-HANDOVER/" },
+      options: { redirectTo },
     });
     if (error) { setError(error.message); setLoading(false); }
   }
@@ -323,13 +325,29 @@ function Splash() {
 /* ---------- home ---------- */
 function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [festMenuId, setFestMenuId] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [confirmId, setConfirmId] = useState(null);
+
   return (
     <div style={{ height: "100dvh", display: "flex", flexDirection: "column", padding: "20px 20px 24px", overflow: "hidden" }}
-      onClick={() => { menuOpen && setMenuOpen(false); festMenuId && setFestMenuId(null); }}>
+      onClick={() => { menuOpen && setMenuOpen(false); }}>
 
       {/* header */}
       <div style={{ position: "relative", marginBottom: 20, flexShrink: 0 }}>
+        {/* gear top-left */}
+        <div style={{ position: "absolute", top: 0, left: 0 }}>
+          <button
+            onClick={e => { e.stopPropagation(); setEditMode(m => !m); }}
+            style={{
+              width: 38, height: 38, borderRadius: "50%", border: "2px solid #e2e8f0",
+              background: editMode ? "#fef2f2" : "#f8fafc", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 16, color: editMode ? "#ef4444" : "#64748b",
+              transition: "all 0.15s",
+            }}
+          >⚙️</button>
+        </div>
+        {/* avatar top-right */}
         <div style={{ position: "absolute", top: 0, right: 0 }}>
           <img
             src={user.user_metadata?.avatar_url || "https://ui-avatars.com/api/?name=U&background=e2e8f0&color=64748b"}
@@ -363,25 +381,31 @@ function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
         </div>
       </div>
 
-      {/* lista festivales — crece y hace scroll interno si hay muchos */}
-      {festMenuId && <div onClick={() => setFestMenuId(null)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />}
+      {/* lista festivales */}
       <div style={{ flex: 1, overflowY: "auto", marginBottom: 14 }}>
         {fests.map(f => {
           const total = f.days.reduce((s, d) => s + d.artists.length, 0);
           return (
-            <div key={f.id} style={{ ...S.festCard, position: "relative", overflow: "visible" }} onClick={() => { setFestMenuId(null); onOpen(f.id); }}>
-              {/* gear */}
-              <button onClick={e => { e.stopPropagation(); setFestMenuId(festMenuId === f.id ? null : f.id); }} style={{ position: "absolute", top: 6, left: 8, background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#94a3b8", padding: 4, lineHeight: 1, zIndex: 2 }}>⚙️</button>
-              {festMenuId === f.id && (
-                <div onClick={e => e.stopPropagation()} style={{ position: "absolute", top: 30, left: 8, background: "#fff", borderRadius: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", border: "1px solid #e2e8f0", zIndex: 20, minWidth: 130, overflow: "hidden" }}>
-                  <button onClick={() => { setFestMenuId(null); if (window.confirm(`¿Borrar "${f.name}"?`)) onDelete(f.id); }} style={{ display: "block", width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
-                </div>
+            <div key={f.id} style={{ ...S.festCard, position: "relative", overflow: "visible" }}
+              onClick={() => { if (!editMode) onOpen(f.id); }}>
+              {editMode && (
+                <button
+                  onClick={e => { e.stopPropagation(); setConfirmId(f.id); }}
+                  style={{
+                    position: "absolute", top: "50%", left: -14, transform: "translateY(-50%)",
+                    width: 28, height: 28, borderRadius: "50%", border: "none",
+                    background: "#ef4444", color: "#fff", fontSize: 20, lineHeight: 1,
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    boxShadow: "0 2px 8px rgba(239,68,68,0.4)", zIndex: 5,
+                    fontWeight: 700,
+                  }}
+                >−</button>
               )}
-              <div style={{ flex: 1, minWidth: 0, paddingLeft: 22 }}>
+              <div style={{ flex: 1, minWidth: 0, paddingLeft: editMode ? 8 : 0 }}>
                 <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</div>
                 <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{f.days.length} días · {total} artistas</div>
               </div>
-              <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>
+              {!editMode && <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>}
             </div>
           );
         })}
@@ -389,6 +413,34 @@ function Home({ fests, user, onOpen, onNew, onDelete, onLogout }) {
 
       {/* botón fijo abajo */}
       <button onClick={onNew} style={{ ...S.bigBtn, marginTop: 0, flexShrink: 0 }}>+ CREAR FESTIVAL</button>
+
+      {/* popup confirmación borrado */}
+      {confirmId && (() => {
+        const fest = fests.find(f => f.id === confirmId);
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+            onClick={() => setConfirmId(null)}>
+            <div style={{ background: "#fff", borderRadius: 20, padding: 28, width: "100%", maxWidth: 340, boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize: 32, textAlign: "center", marginBottom: 12 }}>🗑️</div>
+              <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", textAlign: "center", letterSpacing: "0.04em", marginBottom: 8 }}>
+                ¿Borrar festival?
+              </div>
+              <div style={{ fontSize: 13, color: "#64748b", textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>
+                Vas a borrar <strong style={{ color: "#0f172a" }}>{fest?.name}</strong>. Esta acción no se puede deshacer.
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setConfirmId(null)} style={{ flex: 1, padding: "14px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 14, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: "#334155" }}>
+                  Cancelar
+                </button>
+                <button onClick={() => { onDelete(confirmId); setConfirmId(null); setEditMode(false); }} style={{ flex: 1, padding: "14px", background: "#ef4444", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: "#fff" }}>
+                  Sí, borrar
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
