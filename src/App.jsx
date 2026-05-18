@@ -604,6 +604,8 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);
   const [menuOpenId, setMenuOpenId] = useState(null);
+  const [artGearOpen, setArtGearOpen] = useState(false);
+  const [confirmDeleteArt, setConfirmDeleteArt] = useState(false);
   const day = fest.days[dayIdx];
   const artists = day.artists;
   const art = artists.find(a => a.id === selectedId) || null;
@@ -719,7 +721,24 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: sc, borderRadius: "20px 20px 0 0" }} />
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 8 }}>
-            <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: "0.15em" }}>{day.label} · {artists.findIndex(a => a.id === art.id) + 1}/{artists.length}</div>
+            {/* gear: editar / borrar artista */}
+            <div style={{ position: "relative" }}>
+              <button onClick={() => setArtGearOpen(o => !o)} style={{
+                background: artGearOpen ? "#f1f5f9" : "none", border: "1px solid #e2e8f0",
+                borderRadius: 10, padding: "6px 10px", cursor: "pointer", fontSize: 15, lineHeight: 1,
+              }}>⚙️</button>
+              {artGearOpen && (
+                <div onClick={e => e.stopPropagation()} style={{
+                  position: "absolute", top: 36, left: 0, background: "#fff", borderRadius: 12,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.12)", border: "1px solid #e2e8f0",
+                  zIndex: 30, minWidth: 140, overflow: "hidden",
+                }}>
+                  <button onClick={() => { setArtGearOpen(false); setEditId(art.id); setSelectedId(null); }} style={{ display: "block", width: "100%", padding: "12px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#334155", cursor: "pointer", fontFamily: "monospace" }}>✏️ Editar</button>
+                  <div style={{ height: 1, background: "#f1f5f9" }} />
+                  <button onClick={() => { setArtGearOpen(false); setConfirmDeleteArt(true); }} style={{ display: "block", width: "100%", padding: "12px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
+                </div>
+              )}
+            </div>
             <button onClick={() => toggleCheck(ckey)} style={{
               padding: "7px 14px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer", border: "none",
               background: done ? "#16a34a" : "#f1f5f9",
@@ -785,6 +804,26 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
         </div>
       </div>
       {showShare && <ShareModal fest={fest} onClose={() => setShowShare(false)} />}
+      {/* cierre menú gear al tocar fuera */}
+      {artGearOpen && <div onClick={() => setArtGearOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 20 }} />}
+      {/* popup confirmar borrado artista */}
+      {confirmDeleteArt && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+          onClick={() => setConfirmDeleteArt(false)}>
+          <div style={{ background: "#fff", borderRadius: 20, padding: 28, width: "100%", maxWidth: 340, boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 32, textAlign: "center", marginBottom: 12 }}>🗑️</div>
+            <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", textAlign: "center", letterSpacing: "0.04em", marginBottom: 8 }}>¿Borrar artista?</div>
+            <div style={{ fontSize: 13, color: "#64748b", textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>
+              Vas a borrar <strong style={{ color: "#0f172a" }}>{art.artist}</strong>. Esta acción no se puede deshacer.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setConfirmDeleteArt(false)} style={{ flex: 1, padding: "14px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 14, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: "#334155" }}>Cancelar</button>
+              <button onClick={() => { deleteArtist(art.id); setConfirmDeleteArt(false); setSelectedId(null); }} style={{ flex: 1, padding: "14px", background: "#ef4444", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: "#fff" }}>Sí, borrar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -796,39 +835,20 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
         {artists.length === 0 && (
           <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
         )}
-        {menuOpenId && <div onClick={() => setMenuOpenId(null)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {artists.map((a, i) => {
             const k = `${fest.id}__${day.id}__${a.id}`;
             const ok = !!checks[k];
             const color = sigColor(a.signal);
             return (
-              <div key={a.id} style={{
+              <div key={a.id} onClick={() => setSelectedId(a.id)} style={{
                 background: "#fff", borderRadius: 16,
                 border: `1.5px solid ${ok ? "#86efac" : color + "33"}`,
                 boxShadow: ok ? "0 0 0 3px #dcfce7" : "0 1px 6px rgba(0,0,0,0.06)",
-                position: "relative", overflow: "visible",
+                position: "relative", overflow: "hidden", cursor: "pointer",
               }}>
                 <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: color, borderRadius: "16px 0 0 16px" }} />
-                {/* gear button */}
-                <button
-                  onClick={e => { e.stopPropagation(); setMenuOpenId(menuOpenId === a.id ? null : a.id); }}
-                  style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#94a3b8", padding: 4, lineHeight: 1, zIndex: 2 }}
-                >⚙️</button>
-                {/* dropdown menu */}
-                {menuOpenId === a.id && (
-                  <div onClick={e => e.stopPropagation()} style={{
-                    position: "absolute", top: 32, right: 8, background: "#fff", borderRadius: 12,
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.12)", border: "1px solid #e2e8f0",
-                    zIndex: 20, minWidth: 130, overflow: "hidden",
-                  }}>
-                    <button onClick={() => { setMenuOpenId(null); setEditId(a.id); }} style={{ display: "block", width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#334155", cursor: "pointer", fontFamily: "monospace" }}>✏️ Editar</button>
-                    <div style={{ height: 1, background: "#f1f5f9" }} />
-                    <button onClick={() => { setMenuOpenId(null); if (window.confirm(`¿Borrar "${a.artist}"?`)) deleteArtist(a.id); }} style={{ display: "block", width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
-                  </div>
-                )}
-                {/* main tap area */}
-                <div onClick={() => { setMenuOpenId(null); setSelectedId(a.id); }} style={{ padding: "14px 36px 14px 20px", cursor: "pointer" }}>
+                <div style={{ padding: "14px 16px 14px 20px" }}>
                   <div style={{ fontSize: 26, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.03em", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
                   <div style={{ fontSize: 11, color: "#64748b", fontFamily: "monospace", marginTop: 4, display: "flex", gap: 10, alignItems: "center" }}>
                     <span>🎛️ {a.console || "—"}</span>
