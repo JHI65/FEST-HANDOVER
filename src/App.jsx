@@ -295,8 +295,7 @@ function Main({ session }) {
         {screen === "view" && fest && (
           <FestView
             fest={fest}
-            dayIdx={dayIdx} setDayIdx={(i) => { setDayIdx(i); setArtIdx(0); }}
-            artIdx={artIdx} setArtIdx={setArtIdx}
+            dayIdx={dayIdx} setDayIdx={setDayIdx}
             notes={notes} setNotes={updateNotes}
             checks={checks} toggleCheck={toggleCheck}
             slots={slots} setSlots={updateSlots}
@@ -533,36 +532,13 @@ function Builder({ onCancel, onSave }) {
 }
 
 /* ---------- fest view ---------- */
-function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes, checks, toggleCheck, slots, setSlots, onEditFest, onBack, onRefresh, lastSync }) {
+function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleCheck, slots, setSlots, onEditFest, onBack, onRefresh, lastSync }) {
   const [showShare, setShowShare] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
   const day = fest.days[dayIdx];
   const artists = day.artists;
-  const art = artists[artIdx];
-  const touchX = useRef(null);
-  const touchY = useRef(null);
-  const scrollRef = useRef(null);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const handler = (e) => {
-      if (touchX.current == null) return;
-      const dx = Math.abs(e.touches[0].clientX - touchX.current);
-      const dy = Math.abs(e.touches[0].clientY - touchY.current);
-      if (dy > dx) e.preventDefault();
-    };
-    el.addEventListener("touchmove", handler, { passive: false });
-    return () => el.removeEventListener("touchmove", handler);
-  }, []);
-
-  const isAddScreen = artIdx === artists.length;
-
-  if (!art && !isAddScreen) return (
-    <div style={{ padding: 24 }}>
-      <button onClick={onBack} style={S.backBtn}>‹</button>
-      <div style={{ color: "#94a3b8", marginTop: 20 }}>Este día no tiene artistas.</div>
-    </div>
-  );
+  const art = artists.find(a => a.id === selectedId) || null;
 
   const ckey = art ? `${fest.id}__${day.id}__${art.id}` : null;
   const done = ckey ? !!checks[ckey] : false;
@@ -570,57 +546,43 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
   const mySlots = ckey ? (slots[ckey] || []) : [];
   const sc = art ? sigColor(art.signal) : "#64748b";
 
-  function go(delta) { const n = artIdx + delta; if (n >= 0 && n <= artists.length) setArtIdx(n); }
-
   async function addArtistToDay(fields) {
     const newArt = { id: uid(), artist: fields.artist || "", console: fields.console || "", connection: fields.connection || "", signal: fields.signal || "", preset: fields.preset || "INITIAL", presetOk: false, toLx: fields.toLx || "", toMon: fields.toMon || "", comments: [], extraSlots: [] };
     const updatedDays = fest.days.map((d, i) => i === dayIdx ? { ...d, artists: [...d.artists, newArt] } : d);
-    const updatedFest = { ...fest, days: updatedDays };
-    await onEditFest(updatedFest);
-    setArtIdx(updatedDays[dayIdx].artists.length - 1);
-  }
-  function onTouchStart(e) { touchX.current = e.touches[0].clientX; touchY.current = e.touches[0].clientY; }
-  function onTouchEnd(e) {
-    if (touchX.current == null) return;
-    const dx = e.changedTouches[0].clientX - touchX.current;
-    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
-    touchX.current = null;
+    await onEditFest({ ...fest, days: updatedDays });
+    setShowAdd(false);
+    setSelectedId(newArt.id);
   }
 
   function addNote(text) {
     if (!text.trim()) return;
-    const next = { ...notes, [ckey]: [...myNotes, { text: text.trim(), ts: Date.now() }] };
-    setNotes(next);
+    setNotes({ ...notes, [ckey]: [...myNotes, { text: text.trim(), ts: Date.now() }] });
   }
   function delNote(i) { setNotes({ ...notes, [ckey]: myNotes.filter((_, idx) => idx !== i) }); }
-
   function addSlot(label, value) {
     if (!label.trim()) return;
-    const next = { ...slots, [ckey]: [...mySlots, { id: uid(), label: label.trim(), value: value.trim() }] };
-    setSlots(next);
+    setSlots({ ...slots, [ckey]: [...mySlots, { id: uid(), label: label.trim(), value: value.trim() }] });
   }
   function delSlot(id) { setSlots({ ...slots, [ckey]: mySlots.filter(s => s.id !== id) }); }
   function editSlot(id, fld, val) { setSlots({ ...slots, [ckey]: mySlots.map(s => s.id === id ? { ...s, [fld]: val } : s) }); }
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-      <div style={{ ...S.topBar, flexWrap: "wrap", rowGap: 8, padding: "10px 12px 8px" }}>
-        {/* Row 1: back | festival name (centered) | share */}
-        <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-          <button onClick={onBack} style={S.backBtn}>‹</button>
-          <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{fest.name}</div>
-          <button onClick={() => setShowShare(true)} style={S.syncBtn}>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="currentColor" strokeWidth="2"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="currentColor" strokeWidth="2"/></svg>
-          </button>
-        </div>
-        {/* Row 2: day pills + sync time on the right */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", paddingBottom: 2 }}>
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", flex: 1 }}>
+  /* shared top bar */
+  const TopBar = ({ onBackBtn }) => (
+    <div style={{ ...S.topBar, flexWrap: "wrap", rowGap: 8, padding: "10px 12px 8px" }}>
+      <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+        <button onClick={onBackBtn} style={S.backBtn}>‹</button>
+        <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{fest.name}</div>
+        <button onClick={() => setShowShare(true)} style={S.syncBtn}>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="currentColor" strokeWidth="2"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="currentColor" strokeWidth="2"/></svg>
+        </button>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", paddingBottom: 2 }}>
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", flex: 1 }}>
           {fest.days.map((d, i) => {
             const dn = d.artists.filter(a => checks[`${fest.id}__${d.id}__${a.id}`]).length;
             const active = i === dayIdx;
             return (
-              <button key={d.id} onClick={() => setDayIdx(i)} style={{
+              <button key={d.id} onClick={() => { setDayIdx(i); setSelectedId(null); setShowAdd(false); }} style={{
                 flexShrink: 0, padding: "5px 12px", borderRadius: 20, fontSize: 12,
                 fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
                 whiteSpace: "nowrap", border: "none",
@@ -631,114 +593,144 @@ function FestView({ fest, dayIdx, setDayIdx, artIdx, setArtIdx, notes, setNotes,
               </button>
             );
           })}
+        </div>
+        <button onClick={onRefresh} style={{ ...S.syncBtn, flexShrink: 0 }}>↻ {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : ""}</button>
+      </div>
+    </div>
+  );
+
+  /* ---- add screen ---- */
+  if (showAdd) return (
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <TopBar onBackBtn={() => setShowAdd(false)} />
+      <div style={{ flex: 1, padding: "12px 14px 24px", background: "#f8fafc", overflowY: "auto" }}>
+        <AddArtistScreen onAdd={addArtistToDay} onBack={() => setShowAdd(false)} />
+      </div>
+      {showShare && <ShareModal fest={fest} onClose={() => setShowShare(false)} />}
+    </div>
+  );
+
+  /* ---- detail screen ---- */
+  if (art) return (
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <TopBar onBackBtn={() => setSelectedId(null)} />
+      <div style={{ flex: 1, padding: "12px 14px", background: "#f8fafc", overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+        <div style={{
+          background: "#fff", borderRadius: 20, padding: 20,
+          border: `2px solid ${done ? "#86efac" : sc + "33"}`,
+          boxShadow: done ? "0 0 0 4px #dcfce7" : "0 1px 8px rgba(0,0,0,0.07)",
+          position: "relative", overflow: "hidden",
+        }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: sc, borderRadius: "20px 20px 0 0" }} />
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 8 }}>
+            <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: "0.15em" }}>{day.label} · {artists.findIndex(a => a.id === art.id) + 1}/{artists.length}</div>
+            <button onClick={() => toggleCheck(ckey)} style={{
+              padding: "7px 14px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer", border: "none",
+              background: done ? "#16a34a" : "#f1f5f9",
+              color: done ? "#fff" : "#64748b",
+              transition: "all 0.2s",
+            }}>{done ? "✓ LISTO" : "marcar OK"}</button>
           </div>
-          <button onClick={onRefresh} style={{ ...S.syncBtn, flexShrink: 0 }}>↻ {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : ""}</button>
+
+          <div style={{ fontSize: 36, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.02em", lineHeight: 1, margin: "12px 0 4px" }}>{art.artist || "—"}</div>
+
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f8fafc", border: "1px solid #e2e8f0", padding: "4px 12px", borderRadius: 20, marginBottom: 20 }}>
+            <span style={{ fontSize: 13 }}>🎛️</span>
+            <span style={{ fontSize: 12, color: "#334155", fontFamily: "monospace", fontWeight: 700 }}>{art.console || "—"}</span>
+          </div>
+
+          <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em", marginBottom: 8 }}>CADENA DE SEÑAL</div>
+          <div style={{ display: "flex", alignItems: "stretch", marginBottom: 18 }}>
+            <ChainBox label="CONEXIÓN" value={art.connection || "—"} color="#7c3aed" />
+            <ChainArrow color={sc} />
+            <ChainBox label="SEÑAL" value={art.signal || "—"} color={sc} big />
+            <ChainArrow color={sc} />
+            <ChainBox label="MESA" value={art.console || "—"} color="#334155" />
+          </div>
+
+          <div style={{
+            display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, marginBottom: 12,
+            background: art.presetOk ? "#f0fdf4" : "#f8fafc",
+            border: `1px solid ${art.presetOk ? "#86efac" : "#e2e8f0"}`,
+          }}>
+            <div style={{ fontSize: 24 }}>{art.presetOk ? "✅" : "⚙️"}</div>
+            <div>
+              <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em" }}>PRESET</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: art.presetOk ? "#16a34a" : "#334155", fontFamily: "monospace" }}>{art.preset || "—"}</div>
+            </div>
+          </div>
+
+          {(art.toLx || art.toMon) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>
+              {art.toLx && <RouteChip icon="💡" label="TO LX" value={art.toLx} color="#ea580c" />}
+              {art.toMon && <RouteChip icon="🎧" label="TO MON" value={art.toMon} color="#7c3aed" />}
+            </div>
+          )}
+
+          {(art.extraSlots || []).filter(s => s.label).length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>
+              {(art.extraSlots || []).filter(s => s.label).map(s => (
+                <RouteChip key={s.id} icon="📋" label={s.label} value={s.value || "—"} color="#2563eb" />
+              ))}
+            </div>
+          )}
+
+          {(art.comments || []).length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em", marginBottom: 6 }}>NOTAS PREVIAS</div>
+              {art.comments.map((c, i) => (
+                <div key={i} style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5, padding: "6px 10px", background: "#f8fafc", borderLeft: "2px solid #cbd5e1", borderRadius: "0 6px 6px 0", marginBottom: 4 }}>{c}</div>
+              ))}
+            </div>
+          )}
+
+          <ExtraSlots slots={mySlots} onAdd={addSlot} onDel={delSlot} onEdit={editSlot} />
+          <FohNotes notes={myNotes} onAdd={addNote} onDel={delNote} />
         </div>
       </div>
+      {showShare && <ShareModal fest={fest} onClose={() => setShowShare(false)} />}
+    </div>
+  );
 
-      <div style={{ display: "flex", gap: 5, padding: "10px 16px", justifyContent: "center", flexWrap: "wrap", background: "#fff" }}>
-        {artists.map((a, i) => {
-          const ok = checks[`${fest.id}__${day.id}__${a.id}`];
-          return <div key={a.id} onClick={() => setArtIdx(i)} style={{
-            width: i === artIdx ? 22 : 7, height: 7, borderRadius: 4, cursor: "pointer",
-            background: i === artIdx ? "#0f172a" : ok ? "#16a34a" : "#e2e8f0",
-            transition: "all 0.3s",
-          }} />;
-        })}
-        <div onClick={() => setArtIdx(artists.length)} style={{
-          width: isAddScreen ? 22 : 7, height: 7, borderRadius: 4, cursor: "pointer",
-          background: isAddScreen ? "#f59e0b" : "#fde68a",
-          transition: "all 0.3s",
-        }} />
-      </div>
-
-      <div ref={scrollRef} style={{ flex: 1, padding: "12px 14px 24px", background: "#f8fafc" }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        {isAddScreen ? (
-          <AddArtistScreen onAdd={addArtistToDay} onBack={() => setArtIdx(artists.length - 1)} />
-        ) : (
-          <div style={{
-            background: "#fff", borderRadius: 20, padding: 20,
-            border: `2px solid ${done ? "#86efac" : sc + "33"}`,
-            boxShadow: done ? "0 0 0 4px #dcfce7" : "0 1px 8px rgba(0,0,0,0.07)",
-            position: "relative", overflow: "hidden",
-          }}>
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: sc, borderRadius: "20px 20px 0 0" }} />
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 8 }}>
-              <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: "0.15em" }}>{day.label} · {artIdx + 1}/{artists.length}</div>
-              <button onClick={() => toggleCheck(ckey)} style={{
-                padding: "7px 14px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer", border: "none",
-                background: done ? "#16a34a" : "#f1f5f9",
-                color: done ? "#fff" : "#64748b",
-                transition: "all 0.2s",
-              }}>{done ? "✓ LISTO" : "marcar OK"}</button>
-            </div>
-
-            <div style={{ fontSize: 36, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.02em", lineHeight: 1, margin: "12px 0 4px" }}>{art.artist || "—"}</div>
-
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f8fafc", border: "1px solid #e2e8f0", padding: "4px 12px", borderRadius: 20, marginBottom: 20 }}>
-              <span style={{ fontSize: 13 }}>🎛️</span>
-              <span style={{ fontSize: 12, color: "#334155", fontFamily: "monospace", fontWeight: 700 }}>{art.console || "—"}</span>
-            </div>
-
-            <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em", marginBottom: 8 }}>CADENA DE SEÑAL</div>
-            <div style={{ display: "flex", alignItems: "stretch", marginBottom: 18 }}>
-              <ChainBox label="CONEXIÓN" value={art.connection || "—"} color="#7c3aed" />
-              <ChainArrow color={sc} />
-              <ChainBox label="SEÑAL" value={art.signal || "—"} color={sc} big />
-              <ChainArrow color={sc} />
-              <ChainBox label="MESA" value={art.console || "—"} color="#334155" />
-            </div>
-
-            <div style={{
-              display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, marginBottom: 12,
-              background: art.presetOk ? "#f0fdf4" : "#f8fafc",
-              border: `1px solid ${art.presetOk ? "#86efac" : "#e2e8f0"}`,
-            }}>
-              <div style={{ fontSize: 24 }}>{art.presetOk ? "✅" : "⚙️"}</div>
-              <div>
-                <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em" }}>PRESET</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: art.presetOk ? "#16a34a" : "#334155", fontFamily: "monospace" }}>{art.preset || "—"}</div>
-              </div>
-            </div>
-
-            {(art.toLx || art.toMon) && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>
-                {art.toLx && <RouteChip icon="💡" label="TO LX" value={art.toLx} color="#ea580c" />}
-                {art.toMon && <RouteChip icon="🎧" label="TO MON" value={art.toMon} color="#7c3aed" />}
-              </div>
-            )}
-
-            {(art.extraSlots || []).filter(s => s.label).length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>
-                {(art.extraSlots || []).filter(s => s.label).map(s => (
-                  <RouteChip key={s.id} icon="📋" label={s.label} value={s.value || "—"} color="#2563eb" />
-                ))}
-              </div>
-            )}
-
-            {(art.comments || []).length > 0 && (
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em", marginBottom: 6 }}>NOTAS PREVIAS</div>
-                {art.comments.map((c, i) => (
-                  <div key={i} style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5, padding: "6px 10px", background: "#f8fafc", borderLeft: "2px solid #cbd5e1", borderRadius: "0 6px 6px 0", marginBottom: 4 }}>{c}</div>
-                ))}
-              </div>
-            )}
-
-            <ExtraSlots slots={mySlots} onAdd={addSlot} onDel={delSlot} onEdit={editSlot} />
-            <FohNotes notes={myNotes} onAdd={addNote} onDel={delNote} />
-          </div>
+  /* ---- list screen ---- */
+  return (
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <TopBar onBackBtn={onBack} />
+      <div style={{ flex: 1, padding: "12px 14px", background: "#f8fafc", overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+        {artists.length === 0 && (
+          <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
         )}
-        {!isAddScreen && (
-          <div style={{ marginTop: 14, paddingBottom: "max(16px, env(safe-area-inset-bottom, 16px))" }}>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => go(-1)} disabled={artIdx === 0} style={{ ...S.navBtn, opacity: artIdx === 0 ? 0.3 : 1 }}>‹ Anterior</button>
-              <button onClick={() => go(1)} style={S.navBtn}>{artIdx === artists.length - 1 ? "+ Nuevo artista ›" : "Siguiente ›"}</button>
-            </div>
-            <div style={{ textAlign: "center", fontSize: 10, color: "#94a3b8", marginTop: 8 }}>desliza ← → para cambiar de artista</div>
-          </div>
-        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {artists.map((a, i) => {
+            const k = `${fest.id}__${day.id}__${a.id}`;
+            const ok = !!checks[k];
+            const color = sigColor(a.signal);
+            return (
+              <div key={a.id} onClick={() => setSelectedId(a.id)} style={{
+                background: "#fff", borderRadius: 16, padding: "14px 16px",
+                border: `1.5px solid ${ok ? "#86efac" : color + "33"}`,
+                boxShadow: ok ? "0 0 0 3px #dcfce7" : "0 1px 6px rgba(0,0,0,0.06)",
+                display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
+                position: "relative", overflow: "hidden",
+              }}>
+                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: color, borderRadius: "16px 0 0 16px" }} />
+                <div style={{ marginLeft: 4, flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.03em", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
+                  <div style={{ fontSize: 11, color: "#64748b", fontFamily: "monospace", marginTop: 3, display: "flex", gap: 10 }}>
+                    <span>🎛️ {a.console || "—"}</span>
+                    {a.signal && <span style={{ color }}>{a.signal}</span>}
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                  {ok && <span style={{ fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "2px 8px" }}>✓ OK</span>}
+                  <span style={{ fontSize: 10, color: "#94a3b8" }}>{i + 1}/{artists.length}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <button onClick={() => setShowAdd(true)} style={{ ...S.addBtn, marginTop: 14 }}>+ Añadir artista</button>
       </div>
       {showShare && <ShareModal fest={fest} onClose={() => setShowShare(false)} />}
     </div>
