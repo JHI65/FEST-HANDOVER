@@ -35,25 +35,84 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 
 /* ---------- Supabase storage ---------- */
 async function loadFests(userId) {
+  // Carga festivales donde el usuario es owner O miembro
   const { data } = await supabase
     .from("festivals")
     .select("*")
-    .eq("user_id", userId)
+    .or(`user_id.eq.${userId},members.cs.{${userId}}`)
     .order("created_at", { ascending: true });
   return data || [];
 }
 
-async function saveFest(userId, fest) {
-  await supabase.from("festivals").upsert({
+async function insertFest(userId, fest) {
+  const { error } = await supabase.from("festivals").insert({
     id: fest.id,
     user_id: userId,
     name: fest.name,
     days: fest.days,
+    members: [],
   });
+  if (error) console.error("insertFest error:", error);
+}
+
+async function updateFestRow(fest) {
+  const { error } = await supabase
+    .from("festivals")
+    .update({ name: fest.name, days: fest.days })
+    .eq("id", fest.id);
+  if (error) console.error("updateFestRow error:", error);
+}
+
+async function saveFest(userId, fest) {
+  // Si la fila ya existe en DB (tiene user_id), UPDATE; si no, INSERT.
+  if (fest.user_id) {
+    await updateFestRow(fest);
+  } else {
+    await insertFest(userId, fest);
+  }
 }
 
 async function deleteFest(festId) {
   await supabase.from("festivals").delete().eq("id", festId);
+}
+
+async function joinFestAsMember(festId) {
+  // SECURITY DEFINER function bypasea RLS para que el usuario se pueda añadir
+  // aunque aún no esté en members
+  const { data, error } = await supabase.rpc("join_festival", { festival_id: festId });
+  if (error) console.error("join_festival error:", error);
+  return !error;
+}
+
+// Helpers para notes/checks/slots compartidos en la fila del festival
+// Las keys tienen formato `${festId}__${dayId}__${artId}__...`
+function pickFestId(key) {
+  return (key || "").split("__")[0];
+}
+function filterByFest(obj, festId) {
+  const out = {};
+  for (const k in obj) if (pickFestId(k) === festId) out[k] = obj[k];
+  return out;
+}
+function mergeSharedFromFests(fests) {
+  const notes = {}, checks = {}, slots = {};
+  for (const f of fests || []) {
+    Object.assign(notes, f.notes || {});
+    Object.assign(checks, f.checks || {});
+    Object.assign(slots, f.slots || {});
+  }
+  return { notes, checks, slots };
+}
+async function saveFestShared(festId, notes, checks, slots) {
+  const { error } = await supabase
+    .from("festivals")
+    .update({
+      notes: filterByFest(notes, festId),
+      checks: filterByFest(checks, festId),
+      slots: filterByFest(slots, festId),
+    })
+    .eq("id", festId);
+  if (error) console.error("saveFestShared error:", error);
 }
 
 async function loadUserData(userId) {
@@ -162,9 +221,10 @@ function Main({ session }) {
   useEffect(() => {
     (async () => {
       try {
-      // Check URL for shared festival
-      const params = new URLSearchParams(window.location.search);
-      const shared = params.get("fest");
+      // Check URL for shared festival (puede venir en search o en hash)
+      const searchParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#\??/, ""));
+      const shared = searchParams.get("fest") || hashParams.get("fest");
 
       let f = await loadFests(userId);
 
@@ -183,16 +243,11 @@ function Main({ session }) {
       if (shared) {
         try {
           const imported = JSON.parse(decodeURIComponent(escape(atob(shared))));
-          if (imported && imported.name && Array.isArray(imported.days)) {
-            // Evitar duplicados por nombre (mismo festival importado dos veces)
-            const alreadyImported = f.some(x => x.name === imported.name);
-            if (!alreadyImported) {
-              // Generamos siempre un id nuevo: el id original pertenece a otro usuario
-              // y haría colisión con RLS en Supabase
-              const copy = { ...imported, id: uid() };
-              await saveFest(userId, copy);
-              f = await loadFests(userId);
-            }
+          if (imported && imported.id) {
+            // Unirse como miembro al festival original (sincronización real)
+            const ok = await joinFestAsMember(imported.id);
+            if (ok) f = await loadFests(userId);
+            else console.error("No se pudo unir al festival compartido");
           }
         } catch (err) {
           console.error("Error importando festival compartido:", err);
@@ -200,11 +255,11 @@ function Main({ session }) {
         window.history.replaceState({}, "", window.location.pathname);
       }
 
-      const ud = await loadUserData(userId);
+      const sd = mergeSharedFromFests(f);
       setFests(f);
-      setNotesState(ud.notes || {});
-      setChecksState(ud.checks || {});
-      setSlotsState(ud.slots || {});
+      setNotesState(sd.notes);
+      setChecksState(sd.checks);
+      setSlotsState(sd.slots);
       setLastSync(new Date());
       } catch (err) {
         setLoadError(err.message || "Error al cargar datos");
@@ -212,13 +267,26 @@ function Main({ session }) {
     })();
   }, [userId]);
 
+  // Polling cada 3s — sincronización en tiempo real entre usuarios
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      const f = await loadFests(userId);
+      const sd = mergeSharedFromFests(f);
+      setFests(prev => JSON.stringify(prev) === JSON.stringify(f) ? prev : f);
+      setNotesState(prev => JSON.stringify(prev) === JSON.stringify(sd.notes) ? prev : sd.notes);
+      setChecksState(prev => JSON.stringify(prev) === JSON.stringify(sd.checks) ? prev : sd.checks);
+      setSlotsState(prev => JSON.stringify(prev) === JSON.stringify(sd.slots) ? prev : sd.slots);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [userId]);
+
   async function refresh() {
     const f = await loadFests(userId);
-    const ud = await loadUserData(userId);
+    const sd = mergeSharedFromFests(f);
     setFests(f);
-    setNotesState(ud.notes || {});
-    setChecksState(ud.checks || {});
-    setSlotsState(ud.slots || {});
+    setNotesState(sd.notes);
+    setChecksState(sd.checks);
+    setSlotsState(sd.slots);
     setLastSync(new Date());
   }
 
@@ -228,7 +296,8 @@ function Main({ session }) {
 
   async function addFest(fest) {
     await saveFest(userId, fest);
-    setFests(prev => [...prev, fest]);
+    // Marcar user_id en el estado local para que próximas ediciones hagan UPDATE
+    setFests(prev => [...prev, { ...fest, user_id: userId, members: [] }]);
   }
 
   async function removeFest(id) {
@@ -237,24 +306,28 @@ function Main({ session }) {
   }
 
   async function updateFest(updated) {
-    await saveFest(userId, updated);
     setFests(prev => prev.map(f => f.id === updated.id ? updated : f));
+    await saveFest(userId, updated);
   }
 
   async function updateNotes(n) {
     setNotesState(n);
-    await saveUserData(userId, n, checks, slots);
+    // Persistir en cada festival que tenga keys modificadas
+    const fids = new Set([...Object.keys(n), ...Object.keys(notes)].map(pickFestId));
+    for (const fid of fids) if (fid) await saveFestShared(fid, n, checks, slots);
   }
 
   async function toggleCheck(ckey) {
     const next = { ...checks, [ckey]: !checks[ckey] };
     setChecksState(next);
-    await saveUserData(userId, notes, next, slots);
+    const fid = pickFestId(ckey);
+    if (fid) await saveFestShared(fid, notes, next, slots);
   }
 
   async function updateSlots(sl) {
     setSlotsState(sl);
-    await saveUserData(userId, notes, checks, sl);
+    const fids = new Set([...Object.keys(sl), ...Object.keys(slots)].map(pickFestId));
+    for (const fid of fids) if (fid) await saveFestShared(fid, notes, checks, sl);
   }
 
   async function logout() {
@@ -612,6 +685,14 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [artGearOpen, setArtGearOpen] = useState(false);
   const [confirmDeleteArt, setConfirmDeleteArt] = useState(false);
+  function addDay() {
+    const newDay = { id: uid(), label: `DÍA ${fest.days.length + 1}`, artists: [] };
+    const updated = { ...fest, days: [...fest.days, newDay] };
+    onEditFest(updated);
+    setDayIdx(fest.days.length);
+    setSelectedId(null);
+  }
+
   const day = fest.days[dayIdx];
   const artists = day.artists;
   const art = artists.find(a => a.id === selectedId) || null;
@@ -686,6 +767,11 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
               </button>
             );
           })}
+          <button onClick={addDay} style={{
+            flexShrink: 0, padding: "5px 10px", borderRadius: 20, fontSize: 14,
+            fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+            border: "1.5px dashed #94a3b8", background: "transparent", color: "#94a3b8",
+          }}>+</button>
         </div>
         <button onClick={onRefresh} style={{ ...S.syncBtn, flexShrink: 0 }}>↻ {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : ""}</button>
       </div>
@@ -929,7 +1015,7 @@ function AddArtistScreen({ onAdd, onBack, initial }) {
 
 function ShareModal({ fest, onClose }) {
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(fest))));
-  const url = `${window.location.href.split("?")[0]}?fest=${encoded}`;
+  const url = `${window.location.origin}/FEST-HANDOVER/?fest=${encoded}`;
   const [copied, setCopied] = useState(false);
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
 
