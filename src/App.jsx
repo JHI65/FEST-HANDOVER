@@ -726,7 +726,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
 
           <div style={{ display: "flex", alignItems: "center", marginTop: 8, gap: 8 }}>
             {/* gear: editar / borrar artista */}
-            <div style={{ position: "relative", flexShrink: 0 }}>
+            <div style={{ position: "relative", flexShrink: 0, width: 72, display: "flex", justifyContent: "flex-start" }}>
               <button onClick={() => setArtGearOpen(o => !o)} style={{
                 background: artGearOpen ? "#f1f5f9" : "none", border: "1px solid #e2e8f0",
                 borderRadius: 10, padding: "6px 10px", cursor: "pointer", fontSize: 15, lineHeight: 1,
@@ -746,7 +746,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
             {/* nombre centrado */}
             <div style={{ flex: 1, textAlign: "center", fontSize: 36, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.02em", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{art.artist || "—"}</div>
             {/* checks SC / SHOW */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-end", flexShrink: 0 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-end", flexShrink: 0, width: 72 }}>
               <button onClick={() => toggleCheck(ckeysc)} style={{
                 padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer",
                 border: `1.5px solid ${scDone ? "#16a34a" : "#e2e8f0"}`,
