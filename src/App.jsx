@@ -746,6 +746,7 @@ function Builder({ onCancel, onSave }) {
 function StageView({ fest, onBack, onEditFest, onOpenStage }) {
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
+  const [selectedStage, setSelectedStage] = useState(null);
 
   function addStage() {
     if (!newName.trim()) return;
@@ -757,61 +758,88 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
 
   function deleteStage(sid) {
     onEditFest({ ...fest, stages: (fest.stages || []).filter(s => s.id !== sid) });
+    if (selectedStage === sid) setSelectedStage(null);
   }
 
   const totalForStage = (st) => st.days.reduce((a, d) => a + d.artists.length, 0);
+  const activeStage = selectedStage ? (fest.stages || []).find(s => s.id === selectedStage) : null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
       {/* top bar */}
       <div style={{ ...S.topBar, padding: "10px 12px 10px" }}>
-        <button onClick={onBack} style={S.backBtn}>‹</button>
-        <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{fest.name}</div>
+        <button onClick={selectedStage ? () => setSelectedStage(null) : onBack} style={S.backBtn}>‹</button>
+        <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>
+          {activeStage ? activeStage.name : fest.name}
+        </div>
         <div style={{ width: 44 }} />
       </div>
 
-      {/* lista stages */}
       <div style={{ flex: 1, padding: "16px 14px", background: "#f8fafc", overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
-        <div style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 12 }}>STAGES</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {(fest.stages || []).map(st => {
-            const total = totalForStage(st);
-            return (
-              <div key={st.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 17, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em" }}>{st.name}</div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{st.days.length} días · {total} artistas</div>
-                </div>
-                <button
-                  onClick={() => onOpenStage(st.id)}
-                  style={{ padding: "9px 18px", background: "#0f172a", color: "#fff", border: "none", borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.08em", flexShrink: 0 }}>
-                  FOH
-                </button>
-                {(fest.stages || []).length > 1 && (
-                  <button onClick={() => deleteStage(st.id)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer", padding: "4px 6px", flexShrink: 0 }}>×</button>
-                )}
-              </div>
-            );
-          })}
-        </div>
 
-        {showAdd ? (
-          <div style={{ marginTop: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "14px 16px" }}>
-            <input
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && addStage()}
-              placeholder="Nombre del stage"
-              style={{ ...S.input, marginBottom: 10 }}
-              autoFocus
-            />
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={addStage} disabled={!newName.trim()} style={{ ...S.bigBtn, flex: 1, padding: "11px", marginTop: 0, fontSize: 13, opacity: newName.trim() ? 1 : 0.4 }}>Añadir</button>
-              <button onClick={() => { setShowAdd(false); setNewName(""); }} style={{ ...S.navBtn, flex: 0.5 }}>Cancelar</button>
+        {/* detalle de stage seleccionado: pills FOH + futuras posiciones */}
+        {activeStage ? (
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 14 }}>POSICIONES</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {/* FOH */}
+              <button
+                onClick={() => onOpenStage(activeStage.id)}
+                style={{ display: "flex", alignItems: "center", gap: 14, background: "#0f172a", border: "none", borderRadius: 16, padding: "16px 20px", cursor: "pointer", textAlign: "left" }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🎛️</div>
+                <div>
+                  <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: "#fff", letterSpacing: "0.08em" }}>FOH</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 1 }}>{totalForStage(activeStage)} artistas · {activeStage.days.length} días</div>
+                </div>
+              </button>
+              {/* placeholder futuras posiciones */}
+              <div style={{ display: "flex", alignItems: "center", gap: 14, background: "#fff", border: "1.5px dashed #e2e8f0", borderRadius: 16, padding: "16px 20px", opacity: 0.5 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>＋</div>
+                <div>
+                  <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: "#94a3b8", letterSpacing: "0.08em" }}>NUEVA POSICIÓN</div>
+                  <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 1 }}>Próximamente</div>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
-          <button onClick={() => setShowAdd(true)} style={{ ...S.addBtn, marginTop: 12 }}>+ Añadir stage</button>
+          /* lista de stages */
+          <>
+            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 12 }}>STAGES</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {(fest.stages || []).map(st => {
+                const total = totalForStage(st);
+                return (
+                  <div key={st.id} onClick={() => setSelectedStage(st.id)}
+                    style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 17, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em" }}>{st.name}</div>
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{st.days.length} días · {total} artistas</div>
+                    </div>
+                    <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>
+                    {(fest.stages || []).length > 1 && (
+                      <button onClick={e => { e.stopPropagation(); deleteStage(st.id); }}
+                        style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer", padding: "4px 6px", flexShrink: 0 }}>×</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {showAdd ? (
+              <div style={{ marginTop: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "14px 16px" }}>
+                <input value={newName} onChange={e => setNewName(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addStage()}
+                  placeholder="Nombre del stage" style={{ ...S.input, marginBottom: 10 }} autoFocus />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={addStage} disabled={!newName.trim()} style={{ ...S.bigBtn, flex: 1, padding: "11px", marginTop: 0, fontSize: 13, opacity: newName.trim() ? 1 : 0.4 }}>Añadir</button>
+                  <button onClick={() => { setShowAdd(false); setNewName(""); }} style={{ ...S.navBtn, flex: 0.5 }}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setShowAdd(true)} style={{ ...S.addBtn, marginTop: 12 }}>+ Añadir stage</button>
+            )}
+          </>
         )}
       </div>
     </div>
