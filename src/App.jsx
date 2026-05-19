@@ -4,22 +4,39 @@ import { supabase } from "./supabase";
 /* ---------- seed ---------- */
 const SEED = [{
   id: "ejemplo_fest", name: "FESTIVAL EJEMPLO",
-  days: [
+  stages: [
     {
-      id: "day1", label: "DÍA 1", artists: [
-        { id: "s1", artist: "ARTISTA A", console: "SSL 9000", connection: "OPTO DUO 1/2 (point-point)", signal: "AES 1/2", preset: "ARTISTA A", presetOk: true, toLx: "SMPT 1 (naranja)", toMon: "", comments: ["Mesa compartida con artista siguiente", "Señal de video directo desde FOH"], extraSlots: [{ id: "e1", label: "RF", value: "Shure ULXD4Q · CH 38-40" }] },
-        { id: "s2", artist: "ARTISTA B", console: "DiGiCo SD10", connection: "MADI 1-4 Festival Box", signal: "MADI", preset: "INITIAL", presetOk: false, toLx: "TIMECODE", toMon: "CH16 → MON WORLD", comments: [], extraSlots: [] },
-        { id: "s3", artist: "ARTISTA C", console: "Avid S6L", connection: "HMA 1/2 (ALL DAY)", signal: "AES 3/4", preset: "INITIAL", presetOk: false, toLx: "", toMon: "", comments: [], extraSlots: [] },
-      ]
-    },
-    {
-      id: "day2", label: "DÍA 2", artists: [
-        { id: "s4", artist: "ARTISTA D", console: "Yamaha PM5", connection: "RJ 1/2 SP (Festival Box)", signal: "AES 1/2", preset: "ARTISTA D", presetOk: true, toLx: "SMPT 1 & 2", toMon: "", comments: ["Comparte GAIN con monitor"], extraSlots: [] },
-        { id: "s5", artist: "ARTISTA E", console: "DiGiCo SD7", connection: "OPTO DUO (anillo)", signal: "AES 3/4", preset: "INITIAL", presetOk: false, toLx: "", toMon: "", comments: [], extraSlots: [{ id: "e2", label: "IEM", value: "Sennheiser 2000 · CH 28" }] },
+      id: "stage1", name: "ESCENARIO PRINCIPAL",
+      days: [
+        {
+          id: "day1", label: "DÍA 1", artists: [
+            { id: "s1", artist: "ARTISTA A", console: "SSL 9000", connection: "OPTO DUO 1/2 (point-point)", signal: "AES 1/2", preset: "ARTISTA A", presetOk: true, toLx: "SMPT 1 (naranja)", toMon: "", tecnico: "Local", comments: ["Mesa compartida con artista siguiente", "Señal de video directo desde FOH"], extraSlots: [{ id: "e1", label: "RF", value: "Shure ULXD4Q · CH 38-40" }] },
+            { id: "s2", artist: "ARTISTA B", console: "DiGiCo SD10", connection: "MADI 1-4 Festival Box", signal: "MADI", preset: "INITIAL", presetOk: false, toLx: "TIMECODE", toMon: "CH16 → MON WORLD", tecnico: "Banda", comments: [], extraSlots: [] },
+            { id: "s3", artist: "ARTISTA C", console: "Avid S6L", connection: "HMA 1/2 (ALL DAY)", signal: "AES 3/4", preset: "INITIAL", presetOk: false, toLx: "", toMon: "", tecnico: "", comments: [], extraSlots: [] },
+          ]
+        },
+        {
+          id: "day2", label: "DÍA 2", artists: [
+            { id: "s4", artist: "ARTISTA D", console: "Yamaha PM5", connection: "RJ 1/2 SP (Festival Box)", signal: "AES 1/2", preset: "ARTISTA D", presetOk: true, toLx: "SMPT 1 & 2", toMon: "", tecnico: "Local", comments: ["Comparte GAIN con monitor"], extraSlots: [] },
+            { id: "s5", artist: "ARTISTA E", console: "DiGiCo SD7", connection: "OPTO DUO (anillo)", signal: "AES 3/4", preset: "INITIAL", presetOk: false, toLx: "", toMon: "", tecnico: "", comments: [], extraSlots: [{ id: "e2", label: "IEM", value: "Sennheiser 2000 · CH 28" }] },
+          ]
+        },
       ]
     },
   ],
 }];
+
+/* ---------- migration: normaliza fest al modelo con stages ---------- */
+function normalizeFest(f) {
+  // Nuevo formato: days es { _stages: [...] }
+  if (f.days && !Array.isArray(f.days) && Array.isArray(f.days._stages)) {
+    return { ...f, stages: f.days._stages };
+  }
+  // Ya tiene stages (en memoria, tras normalizar)
+  if (Array.isArray(f.stages)) return f;
+  // Legacy: days es array → migrar a un stage por defecto
+  return { ...f, stages: [{ id: "stage_default", name: "ESCENARIO PRINCIPAL", days: Array.isArray(f.days) ? f.days : [] }] };
+}
 
 /* ---------- helpers ---------- */
 function sigColor(s) {
@@ -35,13 +52,17 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 
 /* ---------- Supabase storage ---------- */
 async function loadFests(userId) {
-  // Carga festivales donde el usuario es owner O miembro
   const { data } = await supabase
     .from("festivals")
     .select("*")
     .or(`user_id.eq.${userId},members.cs.{${userId}}`)
     .order("created_at", { ascending: true });
-  return data || [];
+  return (data || []).map(normalizeFest);
+}
+
+function festToDB(fest) {
+  // Serializa stages en el campo days del schema existente
+  return { _stages: fest.stages || [] };
 }
 
 async function insertFest(userId, fest) {
@@ -49,7 +70,7 @@ async function insertFest(userId, fest) {
     id: fest.id,
     user_id: userId,
     name: fest.name,
-    days: fest.days,
+    days: festToDB(fest),
     members: [],
   });
   if (error) console.error("insertFest error:", error);
@@ -58,7 +79,7 @@ async function insertFest(userId, fest) {
 async function updateFestRow(fest) {
   const { error } = await supabase
     .from("festivals")
-    .update({ name: fest.name, days: fest.days })
+    .update({ name: fest.name, days: festToDB(fest) })
     .eq("id", fest.id);
   if (error) console.error("updateFestRow error:", error);
 }
@@ -209,6 +230,7 @@ function Main({ session }) {
 
   const [fests, setFests] = useState(null);
   const [festId, setFestId] = useState(null);
+  const [stageId, setStageId] = useState(null);
   const [dayIdx, setDayIdx] = useState(0);
   const [artIdx, setArtIdx] = useState(0);
   const [notes, setNotesState] = useState({});
@@ -359,6 +381,7 @@ function Main({ session }) {
   );
   if (!fests) return <Splash />;
   const fest = fests.find(f => f.id === festId);
+  const stage = fest && stageId ? (fest.stages || []).find(s => s.id === stageId) : null;
 
   return (
     <>
@@ -368,11 +391,19 @@ function Main({ session }) {
           <Home
             fests={fests}
             user={session.user}
-            onOpen={(id) => { setFestId(id); setDayIdx(0); setArtIdx(0); setScreen("view"); }}
+            onOpen={(id) => { setFestId(id); setScreen("stages"); }}
             onNew={() => setScreen("builder")}
             onDelete={removeFest}
             onEdit={updateFest}
             onLogout={logout}
+          />
+        )}
+        {screen === "stages" && fest && (
+          <StageView
+            fest={fest}
+            onBack={() => setScreen("home")}
+            onEditFest={updateFest}
+            onOpenStage={(sid) => { setStageId(sid); setDayIdx(0); setScreen("view"); }}
           />
         )}
         {screen === "builder" && (
@@ -381,15 +412,16 @@ function Main({ session }) {
             onSave={async (obj) => { await addFest(obj); setScreen("home"); }}
           />
         )}
-        {screen === "view" && fest && (
+        {screen === "view" && fest && stage && (
           <FestView
             fest={fest}
+            stage={stage}
             dayIdx={dayIdx} setDayIdx={setDayIdx}
             notes={notes} setNotes={updateNotes}
             checks={checks} toggleCheck={toggleCheck}
             slots={slots} setSlots={updateSlots}
             onEditFest={updateFest}
-            onBack={() => setScreen("home")}
+            onBack={() => setScreen("stages")}
             onRefresh={refresh}
             lastSync={lastSync}
           />
@@ -472,7 +504,7 @@ function Home({ fests, user, onOpen, onNew, onDelete, onEdit, onLogout }) {
       {/* lista festivales */}
       <div style={{ flex: 1, overflowY: "auto", marginBottom: 14 }}>
         {fests.map(f => {
-          const total = f.days.reduce((s, d) => s + d.artists.length, 0);
+          const total = (f.stages || []).reduce((s, st) => s + st.days.reduce((a, d) => a + d.artists.length, 0), 0);
           return (
             <div key={f.id} style={{ ...S.festCard, position: "relative", overflow: "visible" }}
               onClick={() => { if (!editMode) onOpen(f.id); }}>
@@ -494,7 +526,7 @@ function Home({ fests, user, onOpen, onNew, onDelete, onEdit, onLogout }) {
               {/* nombre siempre centrado */}
               <div style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
                 <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</div>
-                <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{f.days.length} días · {total} artistas</div>
+                <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{(f.stages || []).length} stages · {total} artistas</div>
               </div>
               {/* slot derecho — mismo ancho que el izquierdo */}
               <div style={{ width: 32, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -702,7 +734,7 @@ function Builder({ onCancel, onSave }) {
       ))}
 
       <button onClick={addDay} style={{ ...S.addBtn, marginTop: 12 }}>+ Añadir día</button>
-      <button onClick={() => valid && onSave({ id: uid(), name: name.trim(), days })} disabled={!valid}
+      <button onClick={() => valid && onSave({ id: uid(), name: name.trim(), stages: [{ id: uid(), name: "ESCENARIO PRINCIPAL", days }] })} disabled={!valid}
         style={{ ...S.bigBtn, marginTop: 24, opacity: valid ? 1 : 0.4 }}>
         GUARDAR FESTIVAL
       </button>
@@ -710,8 +742,84 @@ function Builder({ onCancel, onSave }) {
   );
 }
 
+/* ---------- stage view ---------- */
+function StageView({ fest, onBack, onEditFest, onOpenStage }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState("");
+
+  function addStage() {
+    if (!newName.trim()) return;
+    const newStage = { id: uid(), name: newName.trim().toUpperCase(), days: [{ id: uid(), label: "DÍA 1", artists: [] }] };
+    onEditFest({ ...fest, stages: [...(fest.stages || []), newStage] });
+    setNewName("");
+    setShowAdd(false);
+  }
+
+  function deleteStage(sid) {
+    onEditFest({ ...fest, stages: (fest.stages || []).filter(s => s.id !== sid) });
+  }
+
+  const totalForStage = (st) => st.days.reduce((a, d) => a + d.artists.length, 0);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
+      {/* top bar */}
+      <div style={{ ...S.topBar, padding: "10px 12px 10px" }}>
+        <button onClick={onBack} style={S.backBtn}>‹</button>
+        <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{fest.name}</div>
+        <div style={{ width: 44 }} />
+      </div>
+
+      {/* lista stages */}
+      <div style={{ flex: 1, padding: "16px 14px", background: "#f8fafc", overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+        <div style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 12 }}>STAGES</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {(fest.stages || []).map(st => {
+            const total = totalForStage(st);
+            return (
+              <div key={st.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 17, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em" }}>{st.name}</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{st.days.length} días · {total} artistas</div>
+                </div>
+                <button
+                  onClick={() => onOpenStage(st.id)}
+                  style={{ padding: "9px 18px", background: "#0f172a", color: "#fff", border: "none", borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.08em", flexShrink: 0 }}>
+                  FOH
+                </button>
+                {(fest.stages || []).length > 1 && (
+                  <button onClick={() => deleteStage(st.id)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer", padding: "4px 6px", flexShrink: 0 }}>×</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {showAdd ? (
+          <div style={{ marginTop: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "14px 16px" }}>
+            <input
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addStage()}
+              placeholder="Nombre del stage"
+              style={{ ...S.input, marginBottom: 10 }}
+              autoFocus
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={addStage} disabled={!newName.trim()} style={{ ...S.bigBtn, flex: 1, padding: "11px", marginTop: 0, fontSize: 13, opacity: newName.trim() ? 1 : 0.4 }}>Añadir</button>
+              <button onClick={() => { setShowAdd(false); setNewName(""); }} style={{ ...S.navBtn, flex: 0.5 }}>Cancelar</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setShowAdd(true)} style={{ ...S.addBtn, marginTop: 12 }}>+ Añadir stage</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ---------- fest view ---------- */
-function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleCheck, slots, setSlots, onEditFest, onBack, onRefresh, lastSync }) {
+function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, toggleCheck, slots, setSlots, onEditFest, onBack, onRefresh, lastSync }) {
   const [showShare, setShowShare] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -719,16 +827,21 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [artGearOpen, setArtGearOpen] = useState(false);
   const [confirmDeleteArt, setConfirmDeleteArt] = useState(false);
+
+  function updateStage(newDays) {
+    const newStages = (fest.stages || []).map(s => s.id === stage.id ? { ...s, days: newDays } : s);
+    return { ...fest, stages: newStages };
+  }
+
   function addDay() {
-    const newDay = { id: uid(), label: `DÍA ${fest.days.length + 1}`, artists: [] };
-    const updated = { ...fest, days: [...fest.days, newDay] };
-    onEditFest(updated);
-    setDayIdx(fest.days.length);
+    const newDay = { id: uid(), label: `DÍA ${stage.days.length + 1}`, artists: [] };
+    onEditFest(updateStage([...stage.days, newDay]));
+    setDayIdx(stage.days.length);
     setSelectedId(null);
   }
 
-  const day = fest.days[dayIdx];
-  const artists = day.artists;
+  const day = stage.days[dayIdx];
+  const artists = day ? day.artists : [];
   const art = artists.find(a => a.id === selectedId) || null;
 
   const ckey = art ? `${fest.id}__${day.id}__${art.id}` : null;
@@ -743,23 +856,23 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
 
   async function addArtistToDay(fields) {
     const newArt = { id: uid(), artist: fields.artist || "", console: fields.console || "", connection: fields.connection || "", signal: fields.signal || "", preset: fields.preset || "INITIAL", presetOk: false, toLx: fields.toLx || "", toMon: fields.toMon || "", tecnico: fields.tecnico || "", comments: [], extraSlots: [] };
-    const updatedDays = fest.days.map((d, i) => i === dayIdx ? { ...d, artists: [...d.artists, newArt] } : d);
-    await onEditFest({ ...fest, days: updatedDays });
+    const updatedDays = stage.days.map((d, i) => i === dayIdx ? { ...d, artists: [...d.artists, newArt] } : d);
+    await onEditFest(updateStage(updatedDays));
     setShowAdd(false);
     setSelectedId(newArt.id);
   }
 
   async function saveEditArtist(fields) {
-    const updatedDays = fest.days.map((d, i) => i === dayIdx ? {
+    const updatedDays = stage.days.map((d, i) => i === dayIdx ? {
       ...d, artists: d.artists.map(a => a.id === editId ? { ...a, ...fields } : a)
     } : d);
-    await onEditFest({ ...fest, days: updatedDays });
+    await onEditFest(updateStage(updatedDays));
     setEditId(null);
   }
 
   async function deleteArtist(artId) {
-    const updatedDays = fest.days.map((d, i) => i === dayIdx ? { ...d, artists: d.artists.filter(a => a.id !== artId) } : d);
-    await onEditFest({ ...fest, days: updatedDays });
+    const updatedDays = stage.days.map((d, i) => i === dayIdx ? { ...d, artists: d.artists.filter(a => a.id !== artId) } : d);
+    await onEditFest(updateStage(updatedDays));
   }
 
   function addNote(text) {
@@ -779,14 +892,14 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
     <div style={{ ...S.topBar, flexWrap: "wrap", rowGap: 8, padding: "10px 12px 8px" }}>
       <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
         <button onClick={onBackBtn} style={S.backBtn}>‹</button>
-        <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{fest.name}</div>
+        <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{stage.name}</div>
         <button onClick={() => setShowShare(true)} style={S.syncBtn}>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="currentColor" strokeWidth="2"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="currentColor" strokeWidth="2"/></svg>
         </button>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", paddingBottom: 2 }}>
         <div style={{ display: "flex", gap: 6, overflowX: "auto", flex: 1 }}>
-          {fest.days.map((d, i) => {
+          {stage.days.map((d, i) => {
             const dn = d.artists.filter(a => checks[`${fest.id}__${d.id}__${a.id}__sc`] && checks[`${fest.id}__${d.id}__${a.id}__show`]).length;
             const active = i === dayIdx;
             return (
@@ -1176,21 +1289,10 @@ function FohNotes({ notes, onAdd, onDel }) {
 /* ---------- fest edit modal ---------- */
 function FestEditModal({ fest, onSave, onClose }) {
   const [name, setName] = useState(fest.name);
-  const [days, setDays] = useState(fest.days.map(d => ({ ...d })));
-
-  function renameDay(i, label) {
-    const next = [...days];
-    next[i] = { ...next[i], label };
-    setDays(next);
-  }
-
-  function deleteDay(i) {
-    setDays(days.filter((_, idx) => idx !== i));
-  }
 
   function save() {
     if (!name.trim()) return;
-    onSave({ ...fest, name: name.trim(), days });
+    onSave({ ...fest, name: name.trim() });
   }
 
   return (
@@ -1210,30 +1312,6 @@ function FestEditModal({ fest, onSave, onClose }) {
           style={{ ...S.input, marginBottom: 20 }}
           autoFocus
         />
-
-        <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: "0.1em", marginBottom: 10 }}>DÍAS</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20, maxHeight: 220, overflowY: "auto" }}>
-          {days.map((d, i) => (
-            <div key={d.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input
-                value={d.label}
-                onChange={e => renameDay(i, e.target.value)}
-                style={{ ...S.input, flex: 1, padding: "10px 12px" }}
-              />
-              <button
-                onClick={() => deleteDay(i)}
-                disabled={days.length <= 1}
-                style={{
-                  width: 34, height: 34, borderRadius: "50%", border: "none",
-                  background: days.length <= 1 ? "#f1f5f9" : "#ef4444",
-                  color: days.length <= 1 ? "#cbd5e1" : "#fff",
-                  fontSize: 18, cursor: days.length <= 1 ? "not-allowed" : "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                }}
-              >−</button>
-            </div>
-          ))}
-        </div>
 
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={onClose} style={{ flex: 1, padding: "14px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 14, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: "#334155" }}>
