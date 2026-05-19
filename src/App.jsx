@@ -1245,40 +1245,26 @@ function FestEditModal({ fest, onSave, onClose }) {
 
 /* ---------- compact artist card (ficha compacta) ---------- */
 function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
-  const [showMode, setShowMode] = useState(false);
-
   const k = `${fest.id}__${day.id}__${a.id}`;
   const scDone = !!checks[`${k}__sc`];
   const showDone = !!checks[`${k}__show`];
   const ok = scDone && showDone;
   const color = sigColor(a.signal);
 
-  const cardBg = showMode ? "#0d1014" : "#fff";
-  const cardText = showMode ? "#eceef0" : "#0f172a";
-  const borderC = showMode ? "rgba(255,255,255,0.12)" : "#e2e8f0";
-  const chipBg = showMode ? "rgba(255,255,255,0.07)" : "#f8fafc";
-  const chipBorder = showMode ? "rgba(255,255,255,0.12)" : "#e2e8f0";
-  const textTertiary = showMode ? "#64748b" : "#94a3b8";
-  const textSecondary = showMode ? "#94a3b8" : "#64748b";
+  const cardBg = "#fff";
+  const cardText = "#0f172a";
+  const borderC = "#e2e8f0";
+  const chipBg = "#f8fafc";
+  const chipBorder = "#e2e8f0";
+  const textTertiary = "#94a3b8";
+  const textSecondary = "#64748b";
   const accentLeft = ok ? "#16a34a" : color;
 
   return (
     <div style={{ background: "#f8fafc", borderRadius: 14, padding: "0.75rem" }}>
-      {/* toggle header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+      {/* header */}
+      <div style={{ marginBottom: 10 }}>
         <span style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase" }}>Ficha compacta</span>
-        <div style={{ display: "flex", gap: 3, background: "#fff", border: "0.5px solid #e2e8f0", borderRadius: 8, padding: 3 }}>
-          <button
-            onClick={e => { e.stopPropagation(); setShowMode(false); }}
-            style={{ fontSize: 11, padding: "4px 10px", border: "none", borderRadius: 6, cursor: "pointer", background: !showMode ? "#0f172a" : "transparent", color: !showMode ? "#fff" : "#64748b", fontFamily: "monospace" }}>
-            Preparación
-          </button>
-          <button
-            onClick={e => { e.stopPropagation(); setShowMode(true); }}
-            style={{ fontSize: 11, padding: "4px 10px", border: "none", borderRadius: 6, cursor: "pointer", background: showMode ? "#0f172a" : "transparent", color: showMode ? "#fff" : "#64748b", fontFamily: "monospace" }}>
-            Show
-          </button>
-        </div>
       </div>
 
       {/* main card */}
