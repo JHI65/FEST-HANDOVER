@@ -1332,6 +1332,12 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: a.toMon ? 1 : 0.5 }}>
             🎧 Mon <strong style={{ color: cardText, fontWeight: 500 }}>{a.toMon || "No"}</strong>
           </span>
+          {a.tecnico && <>
+            <span style={{ color: textTertiary }}>·</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              🧑‍🔧 <strong style={{ color: cardText, fontWeight: 500 }}>{a.tecnico}</strong>
+            </span>
+          </>}
           {ok && (
             <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "1px 7px" }}>✓ OK</span>
           )}
