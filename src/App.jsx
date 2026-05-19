@@ -747,6 +747,9 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [selectedStage, setSelectedStage] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameVal, setRenameVal] = useState("");
 
   function addStage() {
     if (!newName.trim()) return;
@@ -805,22 +808,53 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
         ) : (
           /* lista de stages */
           <>
-            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 12 }}>STAGES</div>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
+              <button onClick={() => { setEditMode(m => !m); setRenamingId(null); }} style={{
+                background: editMode ? "#fef2f2" : "#f1f5f9", border: `1px solid ${editMode ? "#fecaca" : "#e2e8f0"}`,
+                borderRadius: 8, padding: "4px 8px", cursor: "pointer", fontSize: 14, color: editMode ? "#ef4444" : "#64748b", lineHeight: 1,
+              }}>⚙️</button>
+              <div style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginLeft: 10 }}>STAGES</div>
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {(fest.stages || []).map(st => {
                 const total = totalForStage(st);
+                const isRenaming = renamingId === st.id;
                 return (
-                  <div key={st.id} onClick={() => setSelectedStage(st.id)}
-                    style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 17, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em" }}>{st.name}</div>
-                      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{st.days.length} días · {total} artistas</div>
-                    </div>
-                    <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>
-                    {(fest.stages || []).length > 1 && (
+                  <div key={st.id}
+                    onClick={() => { if (!editMode) setSelectedStage(st.id); }}
+                    style={{ background: "#fff", border: `1px solid ${editMode ? "#fecaca" : "#e2e8f0"}`, borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: editMode ? "default" : "pointer" }}>
+                    {editMode && (
                       <button onClick={e => { e.stopPropagation(); deleteStage(st.id); }}
-                        style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer", padding: "4px 6px", flexShrink: 0 }}>×</button>
+                        style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "#ef4444", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, flexShrink: 0 }}>−</button>
                     )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {isRenaming ? (
+                        <input
+                          value={renameVal}
+                          onChange={e => setRenameVal(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === "Enter" && renameVal.trim()) {
+                              onEditFest({ ...fest, stages: (fest.stages || []).map(s => s.id === st.id ? { ...s, name: renameVal.trim().toUpperCase() } : s) });
+                              setRenamingId(null);
+                            }
+                            if (e.key === "Escape") setRenamingId(null);
+                          }}
+                          style={{ ...S.input, padding: "6px 10px", fontSize: 14, fontWeight: 700 }}
+                          autoFocus
+                          onClick={e => e.stopPropagation()}
+                        />
+                      ) : (
+                        <>
+                          <div style={{ fontSize: 17, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em" }}>{st.name}</div>
+                          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{st.days.length} días · {total} artistas</div>
+                        </>
+                      )}
+                    </div>
+                    {editMode && !isRenaming && (
+                      <button onClick={e => { e.stopPropagation(); setRenamingId(st.id); setRenameVal(st.name); }}
+                        style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "5px 10px", fontSize: 11, color: "#334155", cursor: "pointer", flexShrink: 0 }}>✏️</button>
+                    )}
+                    {!editMode && <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>}
                   </div>
                 );
               })}
