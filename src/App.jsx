@@ -1312,7 +1312,7 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
             <span style={{
               marginLeft: "auto", fontSize: 11, fontWeight: 500, fontFamily: "monospace",
               padding: "3px 8px", borderRadius: 6,
-              background: a.presetOk ? (showMode ? "rgba(57,217,138,0.15)" : "#f0fdf4") : chipBg,
+              background: a.presetOk ? "#f0fdf4" : chipBg,
               border: `0.5px solid ${a.presetOk ? "#16a34a" : chipBorder}`,
               color: a.presetOk ? "#16a34a" : textSecondary,
               display: "inline-flex", alignItems: "center", gap: 4,
@@ -1331,18 +1331,8 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: a.toMon ? 1 : 0.5 }}>
             🎧 Mon <strong style={{ color: cardText, fontWeight: 500 }}>{a.toMon || "No"}</strong>
           </span>
-          {!showMode && ok && (
+          {ok && (
             <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "1px 7px" }}>✓ OK</span>
-          )}
-          {showMode && (
-            <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
-              <button onClick={e => { e.stopPropagation(); toggleCheck(`${k}__sc`); }} style={{ fontSize: 10, padding: "4px 8px", border: `1px solid ${scDone ? "#39d98a" : "rgba(255,255,255,0.2)"}`, borderRadius: 8, background: scDone ? "rgba(57,217,138,0.15)" : "transparent", color: scDone ? "#39d98a" : "#94a3b8", cursor: "pointer" }}>
-                {scDone ? "✓" : "○"} SC
-              </button>
-              <button onClick={e => { e.stopPropagation(); toggleCheck(`${k}__show`); }} style={{ fontSize: 10, padding: "4px 8px", border: `1px solid ${showDone ? "#39d98a" : "rgba(255,255,255,0.2)"}`, borderRadius: 8, background: showDone ? "rgba(57,217,138,0.15)" : "transparent", color: showDone ? "#39d98a" : "#94a3b8", cursor: "pointer" }}>
-                {showDone ? "✓" : "○"} SHOW
-              </button>
-            </div>
           )}
         </div>
       </div>
