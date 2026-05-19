@@ -976,6 +976,9 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
         {artists.length === 0 && (
           <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
         )}
+        {artists.length > 0 && (
+          <span style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Ficha compacta</span>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {artists.map((a) => (
             <CompactArtistCard
@@ -1262,10 +1265,6 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
 
   return (
     <div style={{ background: "#f8fafc", borderRadius: 14, padding: "0.75rem" }}>
-      {/* header */}
-      <div style={{ marginBottom: 10 }}>
-        <span style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase" }}>Ficha compacta</span>
-      </div>
 
       {/* main card */}
       <div
