@@ -890,10 +890,20 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
             </div>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, marginBottom: 20 }}><div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f8fafc", border: "1px solid #e2e8f0", padding: "4px 12px", borderRadius: 20 }}>
-            <span style={{ fontSize: 13 }}>🎛️</span>
-            <span style={{ fontSize: 12, color: "#334155", fontFamily: "monospace", fontWeight: 700 }}>{art.console || "—"}</span>
-          </div></div>
+          {/* fila 4 slots: Mesa · Técnico · Conexión · Señal */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 10, marginBottom: 14 }}>
+            {[
+              { label: "MESA", value: art.console, color: "#334155", icon: "🎛️" },
+              { label: "TÉCNICO", value: art.tecnico, color: "#0369a1", icon: "🧑‍🔧" },
+              { label: "CONEXIÓN", value: art.connection, color: "#7c3aed", icon: "🔌" },
+              { label: "SEÑAL", value: art.signal, color: sigColor(art.signal), icon: "📶" },
+            ].map(({ label, value, color, icon }) => (
+              <div key={label} style={{ background: `${color}0d`, border: `1px solid ${color}30`, borderRadius: 10, padding: "9px 10px", minWidth: 0 }}>
+                <div style={{ fontSize: 8, color, letterSpacing: "0.15em", fontWeight: 700, marginBottom: 3 }}>{icon} {label}</div>
+                <div style={{ fontSize: 12, color: "#334155", fontFamily: "monospace", wordBreak: "break-word" }}>{value || "—"}</div>
+              </div>
+            ))}
+          </div>
 
           <div style={{
             display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, marginBottom: 12,
@@ -907,9 +917,8 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
             </div>
           </div>
 
-          {(art.toLx || art.toMon || art.tecnico) && (
+          {(art.toLx || art.toMon) && (
             <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>
-              {art.tecnico && <RouteChip icon="🧑‍🔧" label="TÉCNICO" value={art.tecnico} color="#0369a1" />}
               {art.toLx && <RouteChip icon="💡" label="TO LX" value={art.toLx} color="#ea580c" />}
               {art.toMon && <RouteChip icon="🎧" label="TO MON" value={art.toMon} color="#7c3aed" />}
             </div>
