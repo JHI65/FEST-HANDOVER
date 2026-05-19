@@ -1290,9 +1290,17 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
             </span>
             <span style={{ fontSize: 11, color: textTertiary, whiteSpace: "nowrap" }}>{day.label} · fest</span>
           </div>
-          <div style={{ textAlign: "right", flexShrink: 0, lineHeight: 1 }}>
-            <div style={{ fontSize: 9, color: textTertiary, textTransform: "uppercase", letterSpacing: "0.06em" }}>mesa</div>
-            <div style={{ fontSize: 15, fontWeight: 500, fontFamily: "monospace" }}>{a.console || "—"}</div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 14, flexShrink: 0, lineHeight: 1 }}>
+            {a.tecnico && (
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 9, color: textTertiary, textTransform: "uppercase", letterSpacing: "0.06em" }}>técnico</div>
+                <div style={{ fontSize: 13, fontWeight: 500, fontFamily: "monospace" }}>{a.tecnico}</div>
+              </div>
+            )}
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 9, color: textTertiary, textTransform: "uppercase", letterSpacing: "0.06em" }}>mesa</div>
+              <div style={{ fontSize: 15, fontWeight: 500, fontFamily: "monospace" }}>{a.console || "—"}</div>
+            </div>
           </div>
         </div>
 
@@ -1332,12 +1340,6 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: a.toMon ? 1 : 0.5 }}>
             🎧 Mon <strong style={{ color: cardText, fontWeight: 500 }}>{a.toMon || "No"}</strong>
           </span>
-          {a.tecnico && <>
-            <span style={{ color: textTertiary }}>·</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              🧑‍🔧 <strong style={{ color: cardText, fontWeight: 500 }}>{a.tecnico}</strong>
-            </span>
-          </>}
           {ok && (
             <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "1px 7px" }}>✓ OK</span>
           )}
