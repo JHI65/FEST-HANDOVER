@@ -1288,7 +1288,6 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
             <span style={{ fontSize: 21, fontWeight: 500, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {a.artist || "—"}
             </span>
-            <span style={{ fontSize: 11, color: textTertiary, whiteSpace: "nowrap" }}>{day.label} · fest</span>
           </div>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 14, flexShrink: 0, lineHeight: 1 }}>
             {a.tecnico && (
