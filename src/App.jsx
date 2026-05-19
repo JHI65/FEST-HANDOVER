@@ -742,7 +742,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
   const sc = art ? sigColor(art.signal) : "#64748b";
 
   async function addArtistToDay(fields) {
-    const newArt = { id: uid(), artist: fields.artist || "", console: fields.console || "", connection: fields.connection || "", signal: fields.signal || "", preset: fields.preset || "INITIAL", presetOk: false, toLx: fields.toLx || "", toMon: fields.toMon || "", comments: [], extraSlots: [] };
+    const newArt = { id: uid(), artist: fields.artist || "", console: fields.console || "", connection: fields.connection || "", signal: fields.signal || "", preset: fields.preset || "INITIAL", presetOk: false, toLx: fields.toLx || "", toMon: fields.toMon || "", tecnico: fields.tecnico || "", comments: [], extraSlots: [] };
     const updatedDays = fest.days.map((d, i) => i === dayIdx ? { ...d, artists: [...d.artists, newArt] } : d);
     await onEditFest({ ...fest, days: updatedDays });
     setShowAdd(false);
@@ -895,15 +895,6 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
             <span style={{ fontSize: 12, color: "#334155", fontFamily: "monospace", fontWeight: 700 }}>{art.console || "—"}</span>
           </div></div>
 
-          <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em", marginBottom: 8 }}>CADENA DE SEÑAL</div>
-          <div style={{ display: "flex", alignItems: "stretch", marginBottom: 18 }}>
-            <ChainBox label="CONEXIÓN" value={art.connection || "—"} color="#7c3aed" />
-            <ChainArrow color={sc} />
-            <ChainBox label="SEÑAL" value={art.signal || "—"} color={sc} big />
-            <ChainArrow color={sc} />
-            <ChainBox label="MESA" value={art.console || "—"} color="#334155" />
-          </div>
-
           <div style={{
             display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, marginBottom: 12,
             background: art.presetOk ? "#f0fdf4" : "#f8fafc",
@@ -916,8 +907,9 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
             </div>
           </div>
 
-          {(art.toLx || art.toMon) && (
+          {(art.toLx || art.toMon || art.tecnico) && (
             <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>
+              {art.tecnico && <RouteChip icon="🧑‍🔧" label="TÉCNICO" value={art.tecnico} color="#0369a1" />}
               {art.toLx && <RouteChip icon="💡" label="TO LX" value={art.toLx} color="#ea580c" />}
               {art.toMon && <RouteChip icon="🎧" label="TO MON" value={art.toMon} color="#7c3aed" />}
             </div>
@@ -1001,7 +993,7 @@ function FestView({ fest, dayIdx, setDayIdx, notes, setNotes, checks, toggleChec
 
 /* ---------- small components ---------- */
 function AddArtistScreen({ onAdd, onBack, initial }) {
-  const [f, setF] = useState(initial ? { artist: initial.artist || "", console: initial.console || "", connection: initial.connection || "", signal: initial.signal || "", preset: initial.preset || "INITIAL", toLx: initial.toLx || "", toMon: initial.toMon || "" } : { artist: "", console: "", connection: "", signal: "", preset: "INITIAL", toLx: "", toMon: "" });
+  const [f, setF] = useState(initial ? { artist: initial.artist || "", console: initial.console || "", connection: initial.connection || "", signal: initial.signal || "", preset: initial.preset || "INITIAL", toLx: initial.toLx || "", toMon: initial.toMon || "", tecnico: initial.tecnico || "" } : { artist: "", console: "", connection: "", signal: "", preset: "INITIAL", toLx: "", toMon: "", tecnico: "" });
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
   const isEdit = !!initial;
 
@@ -1028,6 +1020,7 @@ function AddArtistScreen({ onAdd, onBack, initial }) {
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
         <input value={f.toLx} onChange={e => set("toLx", e.target.value)} placeholder="TO LX" style={S.input} />
         <input value={f.toMon} onChange={e => set("toMon", e.target.value)} placeholder="TO MON" style={S.input} />
+        <input value={f.tecnico || ""} onChange={e => set("tecnico", e.target.value)} placeholder="Técnico" style={S.input} />
       </div>
       <input value={f.preset} onChange={e => set("preset", e.target.value)} placeholder="Preset" style={{ ...S.input, marginBottom: 14 }} />
       <div style={{ display: "flex", gap: 8 }}>
