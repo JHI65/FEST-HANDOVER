@@ -1742,7 +1742,7 @@ function ruloColor(type) {
   return "#64748b";
 }
 
-const POSITIONS = ["SR", "C", "SL"];
+const POSITIONS = ["SR", "SL"];
 
 function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
@@ -1761,23 +1761,30 @@ function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
     const color = ruloColor(r.type);
     const isOpen = menuId === r.id;
     return (
-      <div style={{ position: "relative" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, background: isOpen ? (dark ? `${color}30` : `${color}18`) : (dark ? `${color}18` : `${color}0d`), border: `1px solid ${dark ? color + "66" : color + "28"}`, borderRadius: 8, padding: "5px 7px", cursor: "pointer" }}
+      <div onClick={e => e.stopPropagation()} style={{ background: isOpen ? (dark ? `${color}24` : `${color}14`) : (dark ? `${color}14` : `${color}0a`), border: `1px solid ${dark ? color + "55" : color + "28"}`, borderRadius: 10, overflow: "hidden" }}>
+        {/* header (always visible) */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 10px", cursor: "pointer" }}
           onClick={() => setMenuId(isOpen ? null : r.id)}>
-          {r._perm && <span style={{ fontSize: 8, lineHeight: 1 }}>📌</span>}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{r.type || "CABLE"}{r.qty ? ` ×${r.qty}` : ""}</div>
-            {r.desc && <div style={{ fontSize: 10, color: T.text2, fontFamily: "monospace", marginTop: 1, lineHeight: 1.3 }}>{r.desc}</div>}
-            {r.note && <div style={{ fontSize: 9, color: "#b45309", marginTop: 2 }}>⚠ {r.note}</div>}
-          </div>
-          <span style={{ fontSize: 10, color, opacity: 0.6, flexShrink: 0 }}>{isOpen ? "▲" : "▼"}</span>
+          {r._perm && <span style={{ fontSize: 10, lineHeight: 1, flexShrink: 0 }}>📌</span>}
+          <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em", flexShrink: 0 }}>{r.type || "CABLE"}{r.qty ? ` ×${r.qty}` : ""}</span>
+          {r.desc && !isOpen && (
+            <span style={{ fontSize: 11, color: T.text2, fontFamily: "monospace", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, minWidth: 0 }}>{r.desc}</span>
+          )}
+          <span style={{ marginLeft: "auto", fontSize: 10, color, opacity: 0.6, flexShrink: 0 }}>{isOpen ? "▲" : "▼"}</span>
         </div>
+        {/* expanded body */}
         {isOpen && (
-          <div style={{ display: "flex", gap: 4, marginTop: 3 }}>
-            <button onClick={() => { setMenuId(null); onEdit(r.id); }}
-              style={{ flex: 1, padding: "6px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 11, color: T.text2, cursor: "pointer", fontFamily: "monospace" }}>✏️ Editar</button>
-            <button onClick={() => { setMenuId(null); setConfirmId(r.id); setConfirmIsPerm(r._perm); }}
-              style={{ flex: 1, padding: "6px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, fontSize: 11, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
+          <div style={{ padding: "0 10px 10px" }}>
+            {r.desc && <div style={{ fontSize: 13, color: T.text, fontFamily: "monospace", lineHeight: 1.4, marginBottom: r.note ? 6 : 8 }}>{r.desc}</div>}
+            {r.note && (
+              <div style={{ fontSize: 11, color: "#b45309", lineHeight: 1.4, padding: "5px 8px", background: dark ? "#78350f33" : "#fffbeb", borderLeft: "2px solid #fcd34d", borderRadius: "0 6px 6px 0", marginBottom: 8 }}>⚠ {r.note}</div>
+            )}
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => { setMenuId(null); onEdit(r.id); }}
+                style={{ flex: 1, padding: "8px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 12, color: T.text2, cursor: "pointer", fontFamily: "monospace" }}>✏️ Editar</button>
+              <button onClick={() => { setMenuId(null); setConfirmId(r.id); setConfirmIsPerm(r._perm); }}
+                style={{ flex: 1, padding: "8px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, fontSize: 12, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
+            </div>
           </div>
         )}
       </div>
@@ -1786,10 +1793,10 @@ function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
 
   return (
     <div onClick={() => menuId && setMenuId(null)}>
-      {/* Stage plot SR / C / SL */}
+      {/* Stage plot SR / SL */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.12em", marginBottom: 6, fontWeight: 700, textAlign: "center" }}>ESCENARIO</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {POSITIONS.map(pos => {
             const posRulos = byPos(pos);
             return (
@@ -1979,7 +1986,7 @@ function RuloFormModal({ initial, prefillPos, onSave, onClose }) {
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 8 }}>POSICIÓN EN ESCENARIO</div>
           <div style={{ display: "flex", gap: 6 }}>
-            {["SR", "C", "SL"].map(pos => (
+            {["SR", "SL"].map(pos => (
               <button key={pos} onClick={() => set("position", f.position === pos ? "" : pos)} style={{
                 flex: 1, padding: "10px", borderRadius: 10, fontSize: 13, fontFamily: "monospace", fontWeight: 700,
                 border: `1.5px solid ${f.position === pos ? color : T.border}`,
