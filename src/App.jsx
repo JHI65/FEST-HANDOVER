@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useContext, createContext } from "react";
+import { useState, useEffect, useRef, useContext, createContext, useCallback } from "react";
+import QRCode from "qrcode";
 import { supabase } from "./supabase";
 
 /* ---------- seed ---------- */
@@ -1436,13 +1437,22 @@ function ShareModal({ fest, onClose }) {
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(fest))));
   const url = `${window.location.origin}/FEST-HANDOVER/?fest=${encoded}`;
   const [copied, setCopied] = useState(false);
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
+  const canvasRef = useRef(null);
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      QRCode.toCanvas(canvasRef.current, url, {
+        width: 220, margin: 2,
+        color: { dark: dark ? "#f1f5f9" : "#0f172a", light: dark ? "#1e293b" : "#ffffff" },
+      });
+    }
+  }, [url, dark]);
 
   function copy() {
     navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   }
 
-  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "flex-end" }} onClick={onClose}>
       <div style={{ background: T.card, borderRadius: "20px 20px 0 0", padding: "24px 20px 36px", width: "100%", maxWidth: 480, margin: "0 auto" }} onClick={e => e.stopPropagation()}>
@@ -1454,7 +1464,7 @@ function ShareModal({ fest, onClose }) {
           <button onClick={onClose} style={S.iconBtn}>✕</button>
         </div>
         <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <img src={qrUrl} alt="QR" style={{ width: 220, height: 220, borderRadius: 12, border: `1px solid ${T.border}` }} />
+          <canvas ref={canvasRef} style={{ borderRadius: 12, border: `1px solid ${T.border}` }} />
           <div style={{ fontSize: 11, color: T.text4, marginTop: 8 }}>Escanea para importar el festival</div>
         </div>
         <div style={{ background: T.card2, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, wordBreak: "break-all", fontSize: 10, color: T.text3, maxHeight: 60, overflow: "hidden" }}>{url.slice(0, 120)}…</div>
