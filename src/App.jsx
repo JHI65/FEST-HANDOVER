@@ -1758,7 +1758,7 @@ function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
   const [confirmId, setConfirmId] = useState(null);
   const [confirmIsPerm, setConfirmIsPerm] = useState(false);
-  const [menuId, setMenuId] = useState(null);
+  const [sheetRulo, setSheetRulo] = useState(null);
 
   const allRulos = [
     ...permRulos.map(r => ({ ...r, _perm: true })),
@@ -1769,40 +1769,21 @@ function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
 
   function RuloChip({ r }) {
     const color = ruloColor(r.type);
-    const isOpen = menuId === r.id;
     return (
-      <div onClick={e => e.stopPropagation()} style={{ background: isOpen ? (dark ? `${color}24` : `${color}14`) : (dark ? `${color}14` : `${color}0a`), border: `1px solid ${dark ? color + "55" : color + "28"}`, borderRadius: 10, overflow: "hidden" }}>
-        {/* header (always visible) */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 10px", cursor: "pointer" }}
-          onClick={() => setMenuId(isOpen ? null : r.id)}>
-          {r._perm && <span style={{ fontSize: 10, lineHeight: 1, flexShrink: 0 }}>📌</span>}
-          <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em", flexShrink: 0 }}>{r.type || "CABLE"}{r.qty ? ` ×${r.qty}` : ""}</span>
-          {r.desc && !isOpen && (
-            <span style={{ fontSize: 11, color: T.text2, fontFamily: "monospace", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, minWidth: 0 }}>{r.desc}</span>
-          )}
-          <span style={{ marginLeft: "auto", fontSize: 10, color, opacity: 0.6, flexShrink: 0 }}>{isOpen ? "▲" : "▼"}</span>
+      <div onClick={() => setSheetRulo(r)}
+        style={{ background: dark ? `${color}14` : `${color}0a`, border: `1px solid ${dark ? color + "55" : color + "28"}`, borderRadius: 10, padding: "8px 10px", cursor: "pointer" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: r.desc || r.note ? 4 : 0 }}>
+          {r._perm && <span style={{ fontSize: 10, lineHeight: 1 }}>📌</span>}
+          <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{r.type || "CABLE"}{r.qty ? ` ×${r.qty}` : ""}</span>
         </div>
-        {/* expanded body */}
-        {isOpen && (
-          <div style={{ padding: "0 10px 10px" }}>
-            {r.desc && <div style={{ fontSize: 13, color: T.text, fontFamily: "monospace", lineHeight: 1.4, marginBottom: r.note ? 6 : 8 }}>{r.desc}</div>}
-            {r.note && (
-              <div style={{ fontSize: 11, color: "#b45309", lineHeight: 1.4, padding: "5px 8px", background: dark ? "#78350f33" : "#fffbeb", borderLeft: "2px solid #fcd34d", borderRadius: "0 6px 6px 0", marginBottom: 8 }}>⚠ {r.note}</div>
-            )}
-            <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => { setMenuId(null); onEdit(r.id); }}
-                style={{ flex: 1, padding: "8px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 12, color: T.text2, cursor: "pointer", fontFamily: "monospace" }}>✏️ Editar</button>
-              <button onClick={() => { setMenuId(null); setConfirmId(r.id); setConfirmIsPerm(r._perm); }}
-                style={{ flex: 1, padding: "8px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, fontSize: 12, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
-            </div>
-          </div>
-        )}
+        {r.desc && <div style={{ fontSize: 12, color: T.text2, fontFamily: "monospace", lineHeight: 1.3 }}>{r.desc}</div>}
+        {r.note && <div style={{ fontSize: 10, color: "#b45309", marginTop: 3 }}>⚠ {r.note}</div>}
       </div>
     );
   }
 
   return (
-    <div onClick={() => menuId && setMenuId(null)}>
+    <div>
       {/* Stage plot SR / SL */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.12em", marginBottom: 6, fontWeight: 700, textAlign: "center" }}>ESCENARIO</div>
@@ -1838,6 +1819,34 @@ function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
       )}
 
       <button onClick={() => onAdd(null)} style={{ ...S.addBtn, marginTop: 6 }}>+ Añadir conexión</button>
+
+      {/* detail sheet */}
+      {sheetRulo && (() => {
+        const r = sheetRulo;
+        const color = ruloColor(r.type);
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "flex-end" }}
+            onClick={() => setSheetRulo(null)}>
+            <div style={{ background: T.card, borderRadius: "20px 20px 0 0", padding: "20px 20px 36px", width: "100%", maxWidth: 480, margin: "0 auto" }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ width: 36, height: 4, background: T.border, borderRadius: 2, margin: "0 auto 16px" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                {r._perm && <span>📌</span>}
+                <span style={{ fontSize: 13, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{r.type || "CABLE"}{r.qty ? ` ×${r.qty}` : ""}</span>
+                {r.position && <span style={{ fontSize: 11, color: T.text4, fontFamily: "monospace", marginLeft: "auto" }}>{r.position}</span>}
+              </div>
+              {r.desc && <div style={{ fontSize: 15, color: T.text, fontFamily: "monospace", lineHeight: 1.4, marginBottom: 10 }}>{r.desc}</div>}
+              {r.note && <div style={{ fontSize: 12, color: "#b45309", lineHeight: 1.4, padding: "8px 10px", background: dark ? "#78350f33" : "#fffbeb", borderLeft: "3px solid #fcd34d", borderRadius: "0 8px 8px 0", marginBottom: 10 }}>⚠ {r.note}</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <button onClick={() => { setSheetRulo(null); onEdit(r.id); }}
+                  style={{ flex: 1, padding: "13px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 12, fontSize: 14, color: T.text2, cursor: "pointer", fontFamily: "monospace" }}>✏️ Editar</button>
+                <button onClick={() => { setSheetRulo(null); setConfirmId(r.id); setConfirmIsPerm(r._perm); }}
+                  style={{ flex: 1, padding: "13px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, fontSize: 14, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {confirmId && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
