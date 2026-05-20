@@ -1437,15 +1437,17 @@ function ShareModal({ fest, onClose }) {
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(fest))));
   const url = `${window.location.origin}/FEST-HANDOVER/?fest=${encoded}`;
   const [copied, setCopied] = useState(false);
+  const [qrError, setQrError] = useState(false);
   const canvasRef = useRef(null);
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
 
   useEffect(() => {
     if (canvasRef.current) {
+      setQrError(false);
       QRCode.toCanvas(canvasRef.current, url, {
         width: 220, margin: 2,
         color: { dark: dark ? "#f1f5f9" : "#0f172a", light: dark ? "#1e293b" : "#ffffff" },
-      });
+      }).catch(() => setQrError(true));
     }
   }, [url, dark]);
 
@@ -1463,10 +1465,17 @@ function ShareModal({ fest, onClose }) {
           </div>
           <button onClick={onClose} style={S.iconBtn}>✕</button>
         </div>
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <canvas ref={canvasRef} style={{ borderRadius: 12, border: `1px solid ${T.border}` }} />
-          <div style={{ fontSize: 11, color: T.text4, marginTop: 8 }}>Escanea para importar el festival</div>
-        </div>
+        {qrError ? (
+          <div style={{ textAlign: "center", marginBottom: 16, padding: "24px 16px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 14 }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
+            <div style={{ fontSize: 13, color: T.text2, fontFamily: "monospace", lineHeight: 1.5 }}>El festival tiene demasiados datos para generar un QR.<br/>Usa el enlace para compartirlo.</div>
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", marginBottom: 16 }}>
+            <canvas ref={canvasRef} style={{ borderRadius: 12, border: `1px solid ${T.border}` }} />
+            <div style={{ fontSize: 11, color: T.text4, marginTop: 8 }}>Escanea para importar el festival</div>
+          </div>
+        )}
         <div style={{ background: T.card2, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, wordBreak: "break-all", fontSize: 10, color: T.text3, maxHeight: 60, overflow: "hidden" }}>{url.slice(0, 120)}…</div>
         <button onClick={copy} style={{ ...S.bigBtn, marginTop: 0, background: copied ? "#16a34a" : (dark ? "#334155" : "#0f172a") }}>
           {copied ? "✓ Copiado" : "Copiar URL"}
