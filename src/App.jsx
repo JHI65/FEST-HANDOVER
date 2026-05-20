@@ -912,11 +912,30 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
   const [confirmDeleteArt, setConfirmDeleteArt] = useState(false);
   const [tab, setTab] = useState("bandas");
   const [showRuloForm, setShowRuloForm] = useState(false);
+  const [showCopy, setShowCopy] = useState(false);
+  const [copySelected, setCopySelected] = useState({});
+  const [copyTargetDays, setCopyTargetDays] = useState({});
   const [editRuloId, setEditRuloId] = useState(null);
 
   function updateStage(newDays) {
     const newStages = (fest.stages || []).map(s => s.id === stage.id ? { ...s, days: newDays } : s);
     return { ...fest, stages: newStages };
+  }
+
+  async function copyArtistsTodays() {
+    const artsToCopy = artists.filter(a => copySelected[a.id]);
+    if (!artsToCopy.length) return;
+    const targetIdxs = stage.days.map((_, i) => i).filter(i => copyTargetDays[i] && i !== dayIdx);
+    if (!targetIdxs.length) return;
+    const newDays = stage.days.map((d, i) => {
+      if (!targetIdxs.includes(i)) return d;
+      const clones = artsToCopy.map(a => ({ ...a, id: uid(), presetOk: false }));
+      return { ...d, artists: [...d.artists, ...clones] };
+    });
+    await onEditFest(updateStage(newDays));
+    setShowCopy(false);
+    setCopySelected({});
+    setCopyTargetDays({});
   }
 
   function updateStageRulos(newRulos) {
@@ -1285,10 +1304,63 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
               />
             ))}
           </div>
-          <button onClick={() => setShowAdd(true)} style={{ ...S.addBtn, marginTop: 14 }}>+ Añadir artista</button>
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <button onClick={() => setShowAdd(true)} style={{ ...S.addBtn, flex: 1, marginTop: 0 }}>+ Añadir artista</button>
+            {artists.length > 0 && stage.days.length > 1 && (
+              <button onClick={() => { setShowCopy(true); setCopySelected({}); setCopyTargetDays({}); }} style={{ ...S.addBtn, flex: 1, marginTop: 0, color: "#7c3aed", borderColor: "#ddd6fe", background: "#f5f3ff" }}>
+                Copiar al día →
+              </button>
+            )}
+          </div>
         </div>
       )}
       {showShare && <ShareModal fest={fest} onClose={() => setShowShare(false)} />}
+
+      {showCopy && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={() => setShowCopy(false)}>
+          <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: 24, width: "100%", maxWidth: 480, boxShadow: "0 -4px 32px rgba(0,0,0,0.18)", maxHeight: "80dvh", overflowY: "auto" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ width: 36, height: 4, background: "#e2e8f0", borderRadius: 2, margin: "0 auto 20px" }} />
+            <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", color: "#0f172a", marginBottom: 4 }}>Copiar artistas</div>
+            <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 16 }}>Selecciona los artistas a copiar y los días destino.</div>
+
+            <div style={{ fontSize: 9, color: "#7c3aed", letterSpacing: "0.15em", fontWeight: 700, marginBottom: 8 }}>ARTISTAS ({day.label})</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+              {artists.map(a => (
+                <label key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, background: copySelected[a.id] ? "#f5f3ff" : "#f8fafc", border: `1px solid ${copySelected[a.id] ? "#c4b5fd" : "#e2e8f0"}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer" }}>
+                  <input type="checkbox" checked={!!copySelected[a.id]} onChange={e => setCopySelected(p => ({ ...p, [a.id]: e.target.checked }))} style={{ accentColor: "#7c3aed", width: 16, height: 16 }} />
+                  <span style={{ fontSize: 13, color: "#334155", fontFamily: "monospace", fontWeight: 700 }}>{a.artist || "—"}</span>
+                  <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: "auto" }}>{a.console || ""}</span>
+                </label>
+              ))}
+            </div>
+
+            <div style={{ fontSize: 9, color: "#7c3aed", letterSpacing: "0.15em", fontWeight: 700, marginBottom: 8 }}>DÍAS DESTINO</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
+              {stage.days.map((d, i) => {
+                if (i === dayIdx) return null;
+                const on = !!copyTargetDays[i];
+                return (
+                  <button key={d.id} onClick={() => setCopyTargetDays(p => ({ ...p, [i]: !p[i] }))} style={{
+                    padding: "7px 16px", borderRadius: 20, fontSize: 12, fontFamily: "'Bebas Neue',sans-serif",
+                    letterSpacing: "0.06em", cursor: "pointer", border: "none",
+                    background: on ? "#7c3aed" : "#f1f5f9", color: on ? "#fff" : "#64748b",
+                  }}>{d.label}</button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={copyArtistsTodays}
+              disabled={!Object.values(copySelected).some(Boolean) || !Object.values(copyTargetDays).some(Boolean)}
+              style={{ width: "100%", padding: "14px", background: "#7c3aed", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", opacity: (Object.values(copySelected).some(Boolean) && Object.values(copyTargetDays).some(Boolean)) ? 1 : 0.4 }}>
+              Copiar
+            </button>
+          </div>
+        </div>
+      )}
+
       {showRuloForm && (
         <RuloFormModal
           initial={editRuloId ? (day.rulos || []).find(r => r.id === editRuloId) : null}
@@ -1385,7 +1457,13 @@ function ChainBox({ label, value, color, big }) {
   );
 }
 function ChainArrow({ color }) {
-  return <div style={{ display: "flex", alignItems: "center", padding: "0 3px", color, fontSize: 13 }}>→</div>;
+  return (
+    <div style={{ display: "flex", alignItems: "center", padding: "0 2px", gap: 2 }}>
+      <div style={{ width: 10, height: 1, background: `${color}55`, borderRadius: 1 }} />
+      <div style={{ width: 4, height: 4, borderRadius: "50%", background: `${color}55` }} />
+      <div style={{ width: 10, height: 1, background: `${color}55`, borderRadius: 1 }} />
+    </div>
+  );
 }
 function RouteChip({ icon, label, value, color }) {
   const { dark } = useTheme(); const T = dark ? DK : LT;
