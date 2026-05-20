@@ -912,6 +912,7 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
   const [confirmDeleteArt, setConfirmDeleteArt] = useState(false);
   const [tab, setTab] = useState("bandas");
   const [showRuloForm, setShowRuloForm] = useState(false);
+  const [prefillPos, setPrefillPos] = useState(null);
   const [showCopy, setShowCopy] = useState(false);
   const [copySelected, setCopySelected] = useState({});
   const [copyTargetDays, setCopyTargetDays] = useState({});
@@ -938,25 +939,52 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
     setCopyTargetDays({});
   }
 
-  function updateStageRulos(newRulos) {
+  function updateDayRulos(newRulos) {
     const newDays = stage.days.map((d, i) => i === dayIdx ? { ...d, rulos: newRulos } : d);
     const newStages = (fest.stages || []).map(s => s.id === stage.id ? { ...s, days: newDays } : s);
     return { ...fest, stages: newStages };
   }
 
+  function updatePermRulos(newRulos) {
+    const newStages = (fest.stages || []).map(s => s.id === stage.id ? { ...s, rulos: newRulos } : s);
+    return { ...fest, stages: newStages };
+  }
+
   function saveRulo(fields) {
-    const rulos = stage.rulos || [];
-    if (editRuloId) {
-      onEditFest(updateStageRulos(rulos.map(r => r.id === editRuloId ? { ...r, ...fields } : r)));
+    if (fields.permanent) {
+      const permRulos = stage.rulos || [];
+      if (editRuloId) {
+        onEditFest(updatePermRulos(permRulos.map(r => r.id === editRuloId ? { ...r, ...fields } : r)));
+        // remove from day rulos if it was there before
+        onEditFest(updateDayRulos((day.rulos || []).filter(r => r.id !== editRuloId)));
+      } else {
+        onEditFest(updatePermRulos([...permRulos, { id: uid(), ...fields }]));
+      }
     } else {
-      onEditFest(updateStageRulos([...rulos, { id: uid(), ...fields }]));
+      const dayRulos = day.rulos || [];
+      if (editRuloId) {
+        // might be in perm or day rulos
+        const inPerm = (stage.rulos || []).find(r => r.id === editRuloId);
+        if (inPerm) {
+          onEditFest(updatePermRulos((stage.rulos || []).filter(r => r.id !== editRuloId)));
+          onEditFest(updateDayRulos([...dayRulos, { ...fields, id: editRuloId }]));
+        } else {
+          onEditFest(updateDayRulos(dayRulos.map(r => r.id === editRuloId ? { ...r, ...fields } : r)));
+        }
+      } else {
+        onEditFest(updateDayRulos([...dayRulos, { id: uid(), ...fields }]));
+      }
     }
     setShowRuloForm(false);
     setEditRuloId(null);
   }
 
-  function deleteRulo(id) {
-    onEditFest(updateStageRulos((stage.rulos || []).filter(r => r.id !== id)));
+  function deleteRulo(id, isPerm) {
+    if (isPerm) {
+      onEditFest(updatePermRulos((stage.rulos || []).filter(r => r.id !== id)));
+    } else {
+      onEditFest(updateDayRulos((day.rulos || []).filter(r => r.id !== id)));
+    }
   }
 
   function addDay() {
@@ -1278,8 +1306,9 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
         <div style={{ flex: 1, padding: "12px 14px", background: T.bg, overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
           <RulosView
             rulos={day.rulos || []}
-            onAdd={() => { setEditRuloId(null); setShowRuloForm(true); }}
-            onEdit={(id) => { setEditRuloId(id); setShowRuloForm(true); }}
+            permRulos={stage.rulos || []}
+            onAdd={(pos) => { setEditRuloId(null); setShowRuloForm(true); setPrefillPos(pos || null); }}
+            onEdit={(id) => { setEditRuloId(id); setShowRuloForm(true); setPrefillPos(null); }}
             onDelete={deleteRulo}
           />
         </div>
@@ -1363,9 +1392,10 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
 
       {showRuloForm && (
         <RuloFormModal
-          initial={editRuloId ? (day.rulos || []).find(r => r.id === editRuloId) : null}
+          initial={editRuloId ? ([...(day.rulos || []), ...(stage.rulos || [])].find(r => r.id === editRuloId) || null) : null}
+          prefillPos={prefillPos}
           onSave={saveRulo}
-          onClose={() => { setShowRuloForm(false); setEditRuloId(null); }}
+          onClose={() => { setShowRuloForm(false); setEditRuloId(null); setPrefillPos(null); }}
         />
       )}
     </div>
@@ -1723,32 +1753,75 @@ function ruloColor(type) {
   return "#64748b";
 }
 
-function RulosView({ rulos, onAdd, onEdit, onDelete }) {
+const POSITIONS = ["SR", "C", "SL"];
+
+function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
   const [confirmId, setConfirmId] = useState(null);
+  const [confirmIsPerm, setConfirmIsPerm] = useState(false);
+
+  const allRulos = [
+    ...permRulos.map(r => ({ ...r, _perm: true })),
+    ...rulos.map(r => ({ ...r, _perm: false })),
+  ];
+
+  const byPos = pos => allRulos.filter(r => r.position === pos);
+  const noPos = allRulos.filter(r => !POSITIONS.includes(r.position));
+  const total = allRulos.length;
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <span style={{ fontSize: 10, letterSpacing: "0.08em", color: T.text4, textTransform: "uppercase" }}>
-          {rulos.length} {rulos.length === 1 ? "conexión" : "conexiones"}
-        </span>
+      <div style={{ fontSize: 10, letterSpacing: "0.08em", color: T.text4, textTransform: "uppercase", marginBottom: 14 }}>
+        {total} {total === 1 ? "conexión" : "conexiones"}
       </div>
 
-      {rulos.length === 0 && (
-        <div style={{ textAlign: "center", color: T.text4, fontSize: 13, marginTop: 40, lineHeight: 2 }}>
-          Sin conexiones definidas.<br />
-          <span style={{ fontSize: 11 }}>Añade cables, fibras y rulos del escenario.</span>
+      {/* Stage plot SR / C / SL */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.12em", marginBottom: 6, fontWeight: 700 }}>ESCENARIO</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+          {POSITIONS.map(pos => {
+            const posRulos = byPos(pos);
+            return (
+              <div key={pos} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden", minHeight: 80 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 8px", borderBottom: `1px solid ${T.border2}`, background: T.card2 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "monospace", color: T.text3, letterSpacing: "0.08em" }}>{pos}</span>
+                  <button onClick={() => onAdd(pos)} style={{ background: "none", border: "none", color: T.text4, fontSize: 16, cursor: "pointer", lineHeight: 1, padding: "0 2px" }}>+</button>
+                </div>
+                <div style={{ padding: 6, display: "flex", flexDirection: "column", gap: 5 }}>
+                  {posRulos.length === 0 && (
+                    <div style={{ fontSize: 10, color: T.text4, textAlign: "center", padding: "8px 0" }}>—</div>
+                  )}
+                  {posRulos.map(r => {
+                    const color = ruloColor(r.type);
+                    return (
+                      <div key={r.id} onClick={() => onEdit(r.id)}
+                        style={{ background: dark ? `${color}18` : `${color}0d`, border: `1px solid ${dark ? color + "44" : color + "28"}`, borderRadius: 8, padding: "5px 7px", cursor: "pointer", position: "relative" }}>
+                        {r._perm && <span style={{ position: "absolute", top: 3, right: 4, fontSize: 8 }}>📌</span>}
+                        <div style={{ fontSize: 9, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em", paddingRight: r._perm ? 12 : 0 }}>{r.type || "CABLE"}{r.qty ? ` ×${r.qty}` : ""}</div>
+                        {r.desc && <div style={{ fontSize: 10, color: T.text2, fontFamily: "monospace", marginTop: 2, lineHeight: 1.3 }}>{r.desc}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Sin posición */}
+      {noPos.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.12em", marginBottom: 8, fontWeight: 700 }}>SIN POSICIÓN</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {noPos.map(r => (
+              <RuloCard key={r.id} r={r} onEdit={() => onEdit(r.id)} onDelete={() => { setConfirmId(r.id); setConfirmIsPerm(r._perm); }} />
+            ))}
+          </div>
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {rulos.map(r => (
-          <RuloCard key={r.id} r={r} onEdit={() => onEdit(r.id)} onDelete={() => setConfirmId(r.id)} />
-        ))}
-      </div>
-
-      <button onClick={onAdd} style={{ ...S.addBtn, marginTop: 14 }}>+ Añadir conexión</button>
+      <button onClick={() => onAdd(null)} style={{ ...S.addBtn, marginTop: 6 }}>+ Añadir conexión</button>
 
       {confirmId && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
@@ -1759,7 +1832,7 @@ function RulosView({ rulos, onAdd, onEdit, onDelete }) {
             <div style={{ fontSize: 13, color: T.text3, textAlign: "center", marginBottom: 20 }}>¿Borrar esta conexión?</div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setConfirmId(null)} style={{ flex: 1, padding: "13px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 12, fontSize: 13, cursor: "pointer", fontFamily: "monospace", color: T.text2 }}>Cancelar</button>
-              <button onClick={() => { onDelete(confirmId); setConfirmId(null); }} style={{ flex: 1, padding: "13px", background: "#ef4444", border: "none", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", color: "#fff" }}>Borrar</button>
+              <button onClick={() => { onDelete(confirmId, confirmIsPerm); setConfirmId(null); }} style={{ flex: 1, padding: "13px", background: "#ef4444", border: "none", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", color: "#fff" }}>Borrar</button>
             </div>
           </div>
         </div>
@@ -1830,7 +1903,7 @@ function RuloCard({ r, onEdit, onDelete }) {
   );
 }
 
-function RuloFormModal({ initial, onSave, onClose }) {
+function RuloFormModal({ initial, prefillPos, onSave, onClose }) {
   const isEdit = !!initial;
   const [f, setF] = useState(initial ? {
     type: initial.type || "OPTOCORE",
@@ -1839,7 +1912,9 @@ function RuloFormModal({ initial, onSave, onClose }) {
     from: initial.from || "",
     to: initial.to || "",
     note: initial.note || "",
-  } : { type: "OPTOCORE", qty: "", desc: "", from: "", to: "", note: "" });
+    position: initial.position || "",
+    permanent: initial.permanent || false,
+  } : { type: "OPTOCORE", qty: "", desc: "", from: "", to: "", note: "", position: prefillPos || "", permanent: false });
 
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
@@ -1908,10 +1983,34 @@ function RuloFormModal({ initial, onSave, onClose }) {
           <input value={f.to} onChange={e => set("to", e.target.value)} placeholder="Ej: FOH Principal" style={S.input} />
         </div>
 
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 6 }}>NOTA (opcional)</div>
           <input value={f.note} onChange={e => set("note", e.target.value)} placeholder="Ej: El sábado mover a Cultura Jaén SL" style={S.input} />
         </div>
+
+        {/* posición en escenario */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 8 }}>POSICIÓN EN ESCENARIO</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {["SR", "C", "SL"].map(pos => (
+              <button key={pos} onClick={() => set("position", f.position === pos ? "" : pos)} style={{
+                flex: 1, padding: "10px", borderRadius: 10, fontSize: 13, fontFamily: "monospace", fontWeight: 700,
+                border: `1.5px solid ${f.position === pos ? color : T.border}`,
+                background: f.position === pos ? `${color}18` : T.card2,
+                color: f.position === pos ? color : T.text3, cursor: "pointer",
+              }}>{pos}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* permanente */}
+        <label style={{ display: "flex", alignItems: "center", gap: 12, background: f.permanent ? "#fef3c7" : T.card2, border: `1px solid ${f.permanent ? "#fcd34d" : T.border}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer", marginBottom: 20 }}>
+          <input type="checkbox" checked={!!f.permanent} onChange={e => set("permanent", e.target.checked)} style={{ accentColor: "#d97706", width: 18, height: 18 }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: f.permanent ? "#92400e" : T.text, fontFamily: "monospace" }}>📌 Rulo permanente</div>
+            <div style={{ fontSize: 11, color: f.permanent ? "#b45309" : T.text4, marginTop: 2 }}>Visible en todos los días del stage</div>
+          </div>
+        </label>
 
         <button onClick={confirm} disabled={!valid} style={{ ...S.bigBtn, marginTop: 0, opacity: valid ? 1 : 0.4 }}>
           {isEdit ? "GUARDAR CAMBIOS" : "AÑADIR CONEXIÓN"}
