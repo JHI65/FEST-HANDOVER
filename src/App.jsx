@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext, createContext } from "react";
 import { supabase } from "./supabase";
 
 /* ---------- seed ---------- */
@@ -38,6 +38,12 @@ function normalizeFest(f) {
   return { ...f, stages: [{ id: "stage_default", name: "ESCENARIO PRINCIPAL", days: Array.isArray(f.days) ? f.days : [] }] };
 }
 
+/* ---------- theme ---------- */
+const ThemeCtx = createContext({ dark: false, toggle: () => {} });
+const useTheme = () => useContext(ThemeCtx);
+const LT = { bg: "#f8fafc", card: "#fff", card2: "#f1f5f9", border: "#e2e8f0", border2: "#f1f5f9", text: "#0f172a", text2: "#334155", text3: "#64748b", text4: "#94a3b8" };
+const DK = { bg: "#0f172a", card: "#1e293b", card2: "#0f172a", border: "#334155", border2: "#1e293b", text: "#f1f5f9", text2: "#cbd5e1", text3: "#94a3b8", text4: "#64748b" };
+
 /* ---------- helpers ---------- */
 function sigColor(s) {
   const t = (s || "").toUpperCase();
@@ -49,6 +55,7 @@ function sigColor(s) {
   return "#64748b";
 }
 const uid = () => Math.random().toString(36).slice(2, 9);
+const noInfo = v => v === "?" ? "NO INFO" : v;
 
 /* ---------- Supabase storage ---------- */
 async function loadFests(userId) {
@@ -239,6 +246,8 @@ function Main({ session }) {
   const [screen, setScreen] = useState("home");
   const [lastSync, setLastSync] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("theme") === "dark");
+  const toggleDark = () => setDarkMode(d => { const n = !d; localStorage.setItem("theme", n ? "dark" : "light"); return n; });
 
   useEffect(() => {
     (async () => {
@@ -383,9 +392,10 @@ function Main({ session }) {
   const fest = fests.find(f => f.id === festId);
   const stage = fest && stageId ? (fest.stages || []).find(s => s.id === stageId) : null;
 
+  const S = makeS(darkMode ? DK : LT);
   return (
-    <>
-      <Style />
+    <ThemeCtx.Provider value={{ dark: darkMode, toggle: toggleDark }}>
+      <Style dark={darkMode} />
       <div style={S.app}>
         {screen === "home" && (
           <Home
@@ -427,7 +437,7 @@ function Main({ session }) {
           />
         )}
       </div>
-    </>
+    </ThemeCtx.Provider>
   );
 }
 
@@ -447,9 +457,12 @@ function Home({ fests, user, onOpen, onNew, onDelete, onEdit, onLogout }) {
   const [editMode, setEditMode] = useState(false);
   const [confirmId, setConfirmId] = useState(null);
   const [editFestId, setEditFestId] = useState(null);
+  const { dark, toggle } = useTheme();
+  const T = dark ? DK : LT;
+  const S = makeS(T);
 
   return (
-    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", padding: "20px 20px 24px", overflow: "hidden" }}
+    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", padding: "20px 20px 24px", overflow: "hidden", background: T.bg }}
       onClick={() => { menuOpen && setMenuOpen(false); }}>
 
       {/* header */}
@@ -459,10 +472,10 @@ function Home({ fests, user, onOpen, onNew, onDelete, onEdit, onLogout }) {
           <button
             onClick={e => { e.stopPropagation(); setEditMode(m => !m); }}
             style={{
-              width: 38, height: 38, borderRadius: "50%", border: "2px solid #e2e8f0",
-              background: editMode ? "#fef2f2" : "#f8fafc", cursor: "pointer",
+              width: 38, height: 38, borderRadius: "50%", border: `2px solid ${T.border}`,
+              background: editMode ? "#fef2f2" : T.card2, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 16, color: editMode ? "#ef4444" : "#64748b",
+              fontSize: 16, color: editMode ? "#ef4444" : T.text3,
               transition: "all 0.15s",
             }}
           >⚙️</button>
@@ -477,14 +490,28 @@ function Home({ fests, user, onOpen, onNew, onDelete, onEdit, onLogout }) {
           />
           {menuOpen && (
             <div onClick={e => e.stopPropagation()} style={{
-              position: "absolute", right: 0, top: 46, background: "#fff",
-              border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
-              padding: "6px", minWidth: 160, zIndex: 50,
+              position: "absolute", right: 0, top: 46, background: T.card,
+              border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
+              padding: "6px", minWidth: 180, zIndex: 50,
             }}>
-              <div style={{ padding: "8px 12px 10px", borderBottom: "1px solid #f1f5f9", marginBottom: 4 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>{user.user_metadata?.full_name || user.email}</div>
-                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{user.email}</div>
+              <div style={{ padding: "8px 12px 10px", borderBottom: `1px solid ${T.border2}`, marginBottom: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{user.user_metadata?.full_name || user.email}</div>
+                <div style={{ fontSize: 11, color: T.text4, marginTop: 2 }}>{user.email}</div>
               </div>
+              <button onClick={toggle} style={{
+                width: "100%", padding: "10px 12px", background: "none", border: "none",
+                borderRadius: 8, color: T.text3, fontSize: 13, cursor: "pointer",
+                textAlign: "left", fontFamily: "'JetBrains Mono',monospace",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+              }}>
+                <span>{dark ? "☀️ Modo claro" : "🌙 Modo oscuro"}</span>
+                <span style={{
+                  fontSize: 11, padding: "2px 8px", borderRadius: 99,
+                  background: dark ? "#334155" : "#f1f5f9",
+                  color: dark ? "#94a3b8" : "#64748b",
+                }}>{dark ? "oscuro" : "claro"}</span>
+              </button>
+              <div style={{ height: 1, background: T.border2, margin: "2px 0" }} />
               <button onClick={onLogout} style={{
                 width: "100%", padding: "10px 12px", background: "none", border: "none",
                 borderRadius: 8, color: "#ef4444", fontSize: 13, cursor: "pointer",
@@ -494,8 +521,8 @@ function Home({ fests, user, onOpen, onNew, onDelete, onEdit, onLogout }) {
           )}
         </div>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 11, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 2 }}>FOH HANDOVER</div>
-          <div style={{ fontSize: 32, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em", lineHeight: 1 }}>
+          <div style={{ fontSize: 11, color: T.text4, letterSpacing: "0.2em", marginBottom: 2 }}>FOH HANDOVER</div>
+          <div style={{ fontSize: 32, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.05em", lineHeight: 1 }}>
             TUS <span style={{ color: "#f59e0b" }}>FESTIVALES</span>
           </div>
         </div>
@@ -506,7 +533,7 @@ function Home({ fests, user, onOpen, onNew, onDelete, onEdit, onLogout }) {
         {fests.map(f => {
           const total = (f.stages || []).reduce((s, st) => s + st.days.reduce((a, d) => a + d.artists.length, 0), 0);
           return (
-            <div key={f.id} style={{ ...S.festCard, position: "relative", overflow: "visible" }}
+            <div key={f.id} style={{ ...S.festCard, background: T.card, border: `1px solid ${T.border}`, position: "relative", overflow: "visible" }}
               onClick={() => { if (!editMode) onOpen(f.id); }}>
               {/* slot izquierdo — siempre ocupa el mismo espacio */}
               <div style={{ width: 32, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -525,8 +552,8 @@ function Home({ fests, user, onOpen, onNew, onDelete, onEdit, onLogout }) {
               </div>
               {/* nombre siempre centrado */}
               <div style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
-                <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</div>
-                <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{(f.stages || []).length} stages · {total} artistas</div>
+                <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</div>
+                <div style={{ fontSize: 12, color: T.text4, marginTop: 2 }}>{(f.stages || []).length} stages · {total} artistas</div>
               </div>
               {/* slot derecho — mismo ancho que el izquierdo */}
               <div style={{ width: 32, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -550,7 +577,6 @@ function Home({ fests, user, onOpen, onNew, onDelete, onEdit, onLogout }) {
         })}
       </div>
 
-      {/* botón fijo abajo */}
       <button onClick={onNew} style={{ ...S.bigBtn, marginTop: 0, flexShrink: 0 }}>+ CREAR FESTIVAL</button>
 
       {/* popup confirmación borrado */}
@@ -559,17 +585,17 @@ function Home({ fests, user, onOpen, onNew, onDelete, onEdit, onLogout }) {
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
             onClick={() => setConfirmId(null)}>
-            <div style={{ background: "#fff", borderRadius: 20, padding: 28, width: "100%", maxWidth: 340, boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}
+            <div style={{ background: T.card, borderRadius: 20, padding: 28, width: "100%", maxWidth: 340, boxShadow: "0 8px 40px rgba(0,0,0,0.3)" }}
               onClick={e => e.stopPropagation()}>
               <div style={{ fontSize: 32, textAlign: "center", marginBottom: 12 }}>🗑️</div>
-              <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", textAlign: "center", letterSpacing: "0.04em", marginBottom: 8 }}>
+              <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: T.text, textAlign: "center", letterSpacing: "0.04em", marginBottom: 8 }}>
                 ¿Borrar festival?
               </div>
-              <div style={{ fontSize: 13, color: "#64748b", textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>
-                Vas a borrar <strong style={{ color: "#0f172a" }}>{fest?.name}</strong>. Esta acción no se puede deshacer.
+              <div style={{ fontSize: 13, color: T.text3, textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>
+                Vas a borrar <strong style={{ color: T.text }}>{fest?.name}</strong>. Esta acción no se puede deshacer.
               </div>
               <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setConfirmId(null)} style={{ flex: 1, padding: "14px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 14, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: "#334155" }}>
+                <button onClick={() => setConfirmId(null)} style={{ flex: 1, padding: "14px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 12, fontSize: 14, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: T.text2 }}>
                   Cancelar
                 </button>
                 <button onClick={() => { onDelete(confirmId); setConfirmId(null); setEditMode(false); }} style={{ flex: 1, padding: "14px", background: "#ef4444", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: "#fff" }}>
@@ -599,12 +625,13 @@ function Home({ fests, user, onOpen, onNew, onDelete, onEdit, onLogout }) {
 /* ---------- builder helpers ---------- */
 function BuilderNotes({ comments, onAdd, onDel }) {
   const [draft, setDraft] = useState("");
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
   return (
     <div style={{ marginTop: 10 }}>
-      <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.1em", marginBottom: 6 }}>NOTAS PREVIAS</div>
+      <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 6 }}>NOTAS PREVIAS</div>
       {comments.map((c, i) => (
         <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 5 }}>
-          <div style={{ flex: 1, fontSize: 13, color: "#475569", lineHeight: 1.4, padding: "7px 10px", background: "#f1f5f9", borderLeft: "2px solid #cbd5e1", borderRadius: "0 6px 6px 0" }}>{c}</div>
+          <div style={{ flex: 1, fontSize: 13, color: T.text3, lineHeight: 1.4, padding: "7px 10px", background: T.card2, borderLeft: `2px solid ${T.border}`, borderRadius: "0 6px 6px 0" }}>{c}</div>
           <button onClick={() => onDel(i)} style={S.iconBtn}>×</button>
         </div>
       ))}
@@ -660,16 +687,17 @@ function Builder({ onCancel, onSave }) {
   };
 
   const valid = name.trim() && days.some(d => d.artists.length);
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
 
   return (
     <div style={{ padding: "20px 16px 40px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
         <button onClick={onCancel} style={S.backBtn}>‹</button>
-        <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em" }}>NUEVO FESTIVAL</div>
+        <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.05em" }}>NUEVO FESTIVAL</div>
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: "0.1em", marginBottom: 6 }}>NOMBRE</div>
+        <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 6 }}>NOMBRE</div>
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Mad Cool 26" style={S.input} />
       </div>
 
@@ -680,7 +708,7 @@ function Builder({ onCancel, onSave }) {
             <button onClick={() => setExpDay(expDay === di ? -1 : di)} style={S.smBtn}>{expDay === di ? "▾" : "▸"}</button>
             {days.length > 1 && <button onClick={() => delDay(di)} style={S.iconBtn}>🗑</button>}
           </div>
-          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 4 }}>{d.artists.length} artistas</div>
+          <div style={{ fontSize: 10, color: T.text4, marginTop: 4 }}>{d.artists.length} artistas</div>
 
           {expDay === di && (
             <div style={{ marginTop: 10 }}>
@@ -709,7 +737,7 @@ function Builder({ onCancel, onSave }) {
                   </div>
 
                   <div style={{ marginTop: 10 }}>
-                    <div style={{ fontSize: 9, color: "#2563eb", letterSpacing: "0.1em", marginBottom: 6 }}>CAMPOS EXTRA</div>
+                    <div style={{ fontSize: 9, color: dark ? "#93c5fd" : "#2563eb", letterSpacing: "0.1em", marginBottom: 6 }}>CAMPOS EXTRA</div>
                     {(a.extraSlots || []).map(s => (
                       <div key={s.id} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
                         <input value={s.label} onChange={e => setES(di, ai, s.id, "label", e.target.value)} placeholder="Etiqueta (RF…)" style={{ ...S.input, flex: 1 }} />
@@ -750,6 +778,7 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
   const [editMode, setEditMode] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [renameVal, setRenameVal] = useState("");
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
 
   function addStage() {
     if (!newName.trim()) return;
@@ -772,48 +801,44 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
       {/* top bar */}
       <div style={{ ...S.topBar, padding: "10px 12px 10px" }}>
         <button onClick={selectedStage ? () => setSelectedStage(null) : onBack} style={S.backBtn}>‹</button>
-        <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>
+        <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.06em" }}>
           {activeStage ? activeStage.name : fest.name}
         </div>
         <div style={{ width: 44 }} />
       </div>
 
-      <div style={{ flex: 1, padding: "16px 14px", background: "#f8fafc", overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+      <div style={{ flex: 1, padding: "16px 14px", background: T.bg, overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
 
-        {/* detalle de stage seleccionado: pills FOH + futuras posiciones */}
         {activeStage ? (
           <div>
-            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 14 }}>POSICIONES</div>
+            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: T.text4, textTransform: "uppercase", marginBottom: 14 }}>POSICIONES</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {/* FOH */}
               <button
                 onClick={() => onOpenStage(activeStage.id)}
-                style={{ display: "flex", alignItems: "center", gap: 14, background: "#0f172a", border: "none", borderRadius: 16, padding: "16px 20px", cursor: "pointer", textAlign: "left" }}>
+                style={{ display: "flex", alignItems: "center", gap: 14, background: dark ? "#334155" : "#0f172a", border: "none", borderRadius: 16, padding: "16px 20px", cursor: "pointer", textAlign: "left" }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🎛️</div>
                 <div>
                   <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: "#fff", letterSpacing: "0.08em" }}>FOH</div>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 1 }}>{totalForStage(activeStage)} artistas · {activeStage.days.length} días</div>
                 </div>
               </button>
-              {/* placeholder futuras posiciones */}
-              <div style={{ display: "flex", alignItems: "center", gap: 14, background: "#fff", border: "1.5px dashed #e2e8f0", borderRadius: 16, padding: "16px 20px", opacity: 0.5 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>＋</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, background: T.card, border: `1.5px dashed ${T.border}`, borderRadius: 16, padding: "16px 20px", opacity: 0.5 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: T.card2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>＋</div>
                 <div>
-                  <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: "#94a3b8", letterSpacing: "0.08em" }}>NUEVA POSICIÓN</div>
-                  <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 1 }}>Próximamente</div>
+                  <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: T.text4, letterSpacing: "0.08em" }}>NUEVA POSICIÓN</div>
+                  <div style={{ fontSize: 11, color: T.text4, marginTop: 1 }}>Próximamente</div>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          /* lista de stages */
           <>
             <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
               <button onClick={() => { setEditMode(m => !m); setRenamingId(null); }} style={{
-                background: editMode ? "#fef2f2" : "#f1f5f9", border: `1px solid ${editMode ? "#fecaca" : "#e2e8f0"}`,
-                borderRadius: 8, padding: "4px 8px", cursor: "pointer", fontSize: 14, color: editMode ? "#ef4444" : "#64748b", lineHeight: 1,
+                background: editMode ? "#fef2f2" : T.card2, border: `1px solid ${editMode ? "#fecaca" : T.border}`,
+                borderRadius: 8, padding: "4px 8px", cursor: "pointer", fontSize: 14, color: editMode ? "#ef4444" : T.text3, lineHeight: 1,
               }}>⚙️</button>
-              <div style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginLeft: 10 }}>STAGES</div>
+              <div style={{ fontSize: 10, letterSpacing: "0.08em", color: T.text4, textTransform: "uppercase", marginLeft: 10 }}>STAGES</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {(fest.stages || []).map(st => {
@@ -822,16 +847,14 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
                 return (
                   <div key={st.id}
                     onClick={() => { if (!editMode) setSelectedStage(st.id); }}
-                    style={{ background: "#fff", border: `1px solid ${editMode ? "#fecaca" : "#e2e8f0"}`, borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: editMode ? "default" : "pointer" }}>
+                    style={{ background: T.card, border: `1px solid ${editMode ? "#fecaca" : T.border}`, borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: editMode ? "default" : "pointer" }}>
                     {editMode && (
                       <button onClick={e => { e.stopPropagation(); deleteStage(st.id); }}
                         style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "#ef4444", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, flexShrink: 0 }}>−</button>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {isRenaming ? (
-                        <input
-                          value={renameVal}
-                          onChange={e => setRenameVal(e.target.value)}
+                        <input value={renameVal} onChange={e => setRenameVal(e.target.value)}
                           onKeyDown={e => {
                             if (e.key === "Enter" && renameVal.trim()) {
                               onEditFest({ ...fest, stages: (fest.stages || []).map(s => s.id === st.id ? { ...s, name: renameVal.trim().toUpperCase() } : s) });
@@ -840,28 +863,26 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
                             if (e.key === "Escape") setRenamingId(null);
                           }}
                           style={{ ...S.input, padding: "6px 10px", fontSize: 14, fontWeight: 700 }}
-                          autoFocus
-                          onClick={e => e.stopPropagation()}
-                        />
+                          autoFocus onClick={e => e.stopPropagation()} />
                       ) : (
                         <>
-                          <div style={{ fontSize: 17, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em" }}>{st.name}</div>
-                          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{st.days.length} días · {total} artistas</div>
+                          <div style={{ fontSize: 17, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em" }}>{st.name}</div>
+                          <div style={{ fontSize: 11, color: T.text4, marginTop: 2 }}>{st.days.length} días · {total} artistas</div>
                         </>
                       )}
                     </div>
                     {editMode && !isRenaming && (
                       <button onClick={e => { e.stopPropagation(); setRenamingId(st.id); setRenameVal(st.name); }}
-                        style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 8, padding: "5px 10px", fontSize: 11, color: "#334155", cursor: "pointer", flexShrink: 0 }}>✏️</button>
+                        style={{ background: T.card2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, color: T.text2, cursor: "pointer", flexShrink: 0 }}>✏️</button>
                     )}
-                    {!editMode && <span style={{ color: "#cbd5e1", fontSize: 18 }}>›</span>}
+                    {!editMode && <span style={{ color: T.text4, fontSize: 18 }}>›</span>}
                   </div>
                 );
               })}
             </div>
 
             {showAdd ? (
-              <div style={{ marginTop: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "14px 16px" }}>
+              <div style={{ marginTop: 12, background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px" }}>
                 <input value={newName} onChange={e => setNewName(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && addStage()}
                   placeholder="Nombre del stage" style={{ ...S.input, marginBottom: 10 }} autoFocus />
@@ -889,10 +910,34 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [artGearOpen, setArtGearOpen] = useState(false);
   const [confirmDeleteArt, setConfirmDeleteArt] = useState(false);
+  const [tab, setTab] = useState("bandas");
+  const [showRuloForm, setShowRuloForm] = useState(false);
+  const [editRuloId, setEditRuloId] = useState(null);
 
   function updateStage(newDays) {
     const newStages = (fest.stages || []).map(s => s.id === stage.id ? { ...s, days: newDays } : s);
     return { ...fest, stages: newStages };
+  }
+
+  function updateStageRulos(newRulos) {
+    const newDays = stage.days.map((d, i) => i === dayIdx ? { ...d, rulos: newRulos } : d);
+    const newStages = (fest.stages || []).map(s => s.id === stage.id ? { ...s, days: newDays } : s);
+    return { ...fest, stages: newStages };
+  }
+
+  function saveRulo(fields) {
+    const rulos = stage.rulos || [];
+    if (editRuloId) {
+      onEditFest(updateStageRulos(rulos.map(r => r.id === editRuloId ? { ...r, ...fields } : r)));
+    } else {
+      onEditFest(updateStageRulos([...rulos, { id: uid(), ...fields }]));
+    }
+    setShowRuloForm(false);
+    setEditRuloId(null);
+  }
+
+  function deleteRulo(id) {
+    onEditFest(updateStageRulos((stage.rulos || []).filter(r => r.id !== id)));
   }
 
   function addDay() {
@@ -950,17 +995,36 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
   function editSlot(id, fld, val) { setSlots({ ...slots, [ckey]: mySlots.map(s => s.id === id ? { ...s, [fld]: val } : s) }); }
 
   /* shared top bar */
+  const { dark, toggle } = useTheme();
+  const T = dark ? DK : LT;
+  const S = makeS(T);
   const TopBar = ({ onBackBtn }) => (
-    <div style={{ ...S.topBar, flexWrap: "wrap", rowGap: 8, padding: "10px 12px 8px" }}>
+    <div style={{ ...S.topBar, flexWrap: "wrap", rowGap: 8, padding: "10px 12px 8px", background: T.card, borderBottomColor: T.border }}>
       <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
         <button onClick={onBackBtn} style={S.backBtn}>‹</button>
-        <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.06em" }}>{stage.name}</div>
+        <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.06em" }}>{stage.name}</div>
         <button onClick={() => setShowShare(true)} style={S.syncBtn}>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="currentColor" strokeWidth="2"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="currentColor" strokeWidth="2"/></svg>
         </button>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", paddingBottom: 2 }}>
-        <div style={{ display: "flex", gap: 6, overflowX: "auto", flex: 1 }}>
+      {/* BANDAS / RULOS tab switcher + sync */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", paddingBottom: 2 }}>
+        <div style={{ display: "flex", gap: 4, background: T.card2, borderRadius: 10, padding: 3 }}>
+          {["bandas", "rulos"].map(t => (
+            <button key={t} onClick={() => { setTab(t); setSelectedId(null); setShowAdd(false); }} style={{
+              padding: "4px 10px", borderRadius: 8, fontSize: 11,
+              fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
+              border: "none",
+              background: tab === t ? (dark ? "#334155" : "#0f172a") : "transparent",
+              color: tab === t ? "#fff" : T.text4,
+              transition: "all 0.2s",
+            }}>{t === "bandas" ? "BANDAS" : "RULOS"}</button>
+          ))}
+        </div>
+        <button onClick={onRefresh} style={{ ...S.syncBtn, flexShrink: 0 }}>↻ {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : ""}</button>
+      </div>
+      {/* day pills */}
+      <div style={{ display: "flex", gap: 6, overflowX: "auto", width: "100%", paddingBottom: 2 }}>
           {stage.days.map((d, i) => {
             const dn = d.artists.filter(a => checks[`${fest.id}__${d.id}__${a.id}__sc`] && checks[`${fest.id}__${d.id}__${a.id}__show`]).length;
             const active = i === dayIdx;
@@ -982,8 +1046,6 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
             border: "1.5px dashed #94a3b8", background: "transparent", color: "#94a3b8",
           }}>+</button>
         </div>
-        <button onClick={onRefresh} style={{ ...S.syncBtn, flexShrink: 0 }}>↻ {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : ""}</button>
-      </div>
     </div>
   );
 
@@ -1016,102 +1078,147 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
   if (art) return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
       <TopBar onBackBtn={() => setSelectedId(null)} />
-      <div style={{ flex: 1, padding: "12px 14px", background: "#f8fafc", overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
-        <div style={{
-          background: "#fff", borderRadius: 20, padding: 20,
-          border: `2px solid ${done ? "#86efac" : sc + "33"}`,
-          boxShadow: done ? "0 0 0 4px #dcfce7" : "0 1px 8px rgba(0,0,0,0.07)",
-          position: "relative", overflow: "hidden",
-        }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: sc, borderRadius: "20px 20px 0 0" }} />
+      <div style={{ flex: 1, padding: "12px 14px", background: T.bg, overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+        <div style={{ background: T.card, border: `0.5px solid ${T.border}`, borderRadius: 16, overflow: "hidden" }}>
 
-          <div style={{ display: "flex", alignItems: "center", marginTop: 8, gap: 8 }}>
-            {/* gear: editar / borrar artista */}
-            <div style={{ position: "relative", flexShrink: 0, width: 72, display: "flex", justifyContent: "flex-start" }}>
-              <button onClick={() => setArtGearOpen(o => !o)} style={{
-                background: artGearOpen ? "#f1f5f9" : "none", border: "1px solid #e2e8f0",
-                borderRadius: 10, padding: "6px 10px", cursor: "pointer", fontSize: 15, lineHeight: 1,
-              }}>⚙️</button>
-              {artGearOpen && (
-                <div onClick={e => e.stopPropagation()} style={{
-                  position: "absolute", top: 36, left: 0, background: "#fff", borderRadius: 12,
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.12)", border: "1px solid #e2e8f0",
-                  zIndex: 30, minWidth: 140, overflow: "hidden",
-                }}>
-                  <button onClick={() => { setArtGearOpen(false); setEditId(art.id); setSelectedId(null); }} style={{ display: "block", width: "100%", padding: "12px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#334155", cursor: "pointer", fontFamily: "monospace" }}>✏️ Editar</button>
-                  <div style={{ height: 1, background: "#f1f5f9" }} />
-                  <button onClick={() => { setArtGearOpen(false); setConfirmDeleteArt(true); }} style={{ display: "block", width: "100%", padding: "12px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
+          {/* header: nombre + día/hora + botones SC/SHOW */}
+          <div style={{ padding: "14px 16px", borderBottom: `0.5px solid ${T.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, minWidth: 0 }}>
+                {/* gear */}
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <button onClick={() => setArtGearOpen(o => !o)} style={{
+                    background: artGearOpen ? "#f1f5f9" : "none", border: "1px solid #e2e8f0",
+                    borderRadius: 10, padding: "6px 10px", cursor: "pointer", fontSize: 15, lineHeight: 1,
+                  }}>⚙️</button>
+                  {artGearOpen && (
+                    <div onClick={e => e.stopPropagation()} style={{
+                      position: "absolute", top: 38, left: 0, background: "#fff", borderRadius: 12,
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.12)", border: "1px solid #e2e8f0",
+                      zIndex: 30, minWidth: 140, overflow: "hidden",
+                    }}>
+                      <button onClick={() => { setArtGearOpen(false); setEditId(art.id); setSelectedId(null); }} style={{ display: "block", width: "100%", padding: "12px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#334155", cursor: "pointer", fontFamily: "monospace" }}>✏️ Editar</button>
+                      <div style={{ height: 1, background: "#f1f5f9" }} />
+                      <button onClick={() => { setArtGearOpen(false); setConfirmDeleteArt(true); }} style={{ display: "block", width: "100%", padding: "12px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            {/* nombre centrado */}
-            <div style={{ flex: 1, textAlign: "center", fontSize: 36, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.02em", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{art.artist || "—"}</div>
-            {/* checks SC / SHOW */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-end", flexShrink: 0, width: 72 }}>
-              <button onClick={() => toggleCheck(ckeysc)} style={{
-                padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer",
-                border: `1.5px solid ${scDone ? "#16a34a" : "#e2e8f0"}`,
-                background: scDone ? "#16a34a" : "#f8fafc",
-                color: scDone ? "#fff" : "#94a3b8",
-                transition: "all 0.2s", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap",
-              }}>{scDone ? "✓" : "○"} SC</button>
-              <button onClick={() => toggleCheck(ckeyshow)} style={{
-                padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer",
-                border: `1.5px solid ${showDone ? "#16a34a" : "#e2e8f0"}`,
-                background: showDone ? "#16a34a" : "#f8fafc",
-                color: showDone ? "#fff" : "#94a3b8",
-                transition: "all 0.2s", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap",
-              }}>{showDone ? "✓" : "○"} SHOW</button>
-            </div>
-          </div>
-
-          {/* fila 4 slots: Mesa · Técnico · Conexión · Señal */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 10, marginBottom: 14 }}>
-            {[
-              { label: "MESA", value: art.console, color: "#334155", icon: "🎛️" },
-              { label: "TÉCNICO", value: art.tecnico, color: "#0369a1", icon: "🧑‍🔧" },
-              { label: "CONEXIÓN", value: art.connection, color: "#7c3aed", icon: "🔌" },
-              { label: "SEÑAL", value: art.signal, color: sigColor(art.signal), icon: "📶" },
-            ].map(({ label, value, color, icon }) => (
-              <div key={label} style={{ background: `${color}0d`, border: `1px solid ${color}30`, borderRadius: 10, padding: "9px 10px", minWidth: 0 }}>
-                <div style={{ fontSize: 8, color, letterSpacing: "0.15em", fontWeight: 700, marginBottom: 3 }}>{icon} {label}</div>
-                <div style={{ fontSize: 12, color: "#334155", fontFamily: "monospace", wordBreak: "break-word" }}>{value || "—"}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 20, fontWeight: 500, color: T.text, lineHeight: 1.2, wordBreak: "break-word" }}>{art.artist || "—"}</div>
+                  <div style={{ fontSize: 12, color: T.text4, marginTop: 4 }}>{day.label} · {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : "—"}</div>
+                </div>
               </div>
-            ))}
-          </div>
-
-          <div style={{
-            display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, marginBottom: 12,
-            background: art.presetOk ? "#f0fdf4" : "#f8fafc",
-            border: `1px solid ${art.presetOk ? "#86efac" : "#e2e8f0"}`,
-          }}>
-            <div style={{ fontSize: 24 }}>{art.presetOk ? "✅" : "⚙️"}</div>
-            <div>
-              <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em" }}>PRESET</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: art.presetOk ? "#16a34a" : "#334155", fontFamily: "monospace" }}>{art.preset || "—"}</div>
+              {/* SC + SHOW pills */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, flexShrink: 0, paddingTop: 2, alignItems: "flex-end" }}>
+                <button onClick={() => toggleCheck(ckeysc)} style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  fontSize: 11, fontWeight: 500, padding: "3px 10px", borderRadius: 99,
+                  background: scDone ? "#E1F5EE" : "#f8fafc",
+                  color: scDone ? "#085041" : "#94a3b8",
+                  border: `0.5px solid ${scDone ? "#1D9E7555" : "#e2e8f0"}`,
+                  cursor: "pointer", transition: "all 0.2s",
+                }}>
+                  {scDone && <span style={{ width: 5, height: 5, background: "#1D9E75", borderRadius: "50%", display: "inline-block" }} />}
+                  SC
+                </button>
+                <button onClick={() => toggleCheck(ckeyshow)} style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  fontSize: 11, fontWeight: 500, padding: "3px 10px", borderRadius: 99,
+                  background: showDone ? "#E6F1FB" : "#f8fafc",
+                  color: showDone ? "#0C447C" : "#94a3b8",
+                  border: `0.5px solid ${showDone ? "#2563eb55" : "#e2e8f0"}`,
+                  cursor: "pointer", transition: "all 0.2s",
+                }}>
+                  {showDone && <span style={{ width: 5, height: 5, background: "#2563eb", borderRadius: "50%", display: "inline-block" }} />}
+                  SHOW
+                </button>
+              </div>
             </div>
           </div>
 
+          {/* Setup técnico */}
+          <div style={{ borderBottom: `0.5px solid ${T.border}` }}>
+            <div style={{ padding: "10px 16px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 12, color: T.text4 }}>🖥</span>
+              <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.07em", textTransform: "uppercase", color: T.text4 }}>Setup técnico</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5px", background: T.border }}>
+              <div style={{ padding: "10px 12px", background: T.card2 }}>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: T.text4, marginBottom: 4 }}>Mesa</div>
+                {art.console
+                  ? <div style={{ fontSize: 14, fontWeight: 500, color: T.text, lineHeight: 1.3 }}>{noInfo(art.console)}</div>
+                  : <div style={{ fontSize: 13, fontWeight: 400, color: T.text4, fontStyle: "italic" }}>Sin confirmar</div>}
+              </div>
+              <div style={{ padding: "10px 12px", background: T.card2 }}>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: T.text4, marginBottom: 4 }}>Técnico</div>
+                {art.tecnico
+                  ? <div style={{ fontSize: 14, fontWeight: 500, color: T.text, lineHeight: 1.3 }}>{noInfo(art.tecnico)}</div>
+                  : <div style={{ fontSize: 13, fontWeight: 400, color: T.text4, fontStyle: "italic" }}>Sin confirmar</div>}
+              </div>
+              <div style={{ padding: "10px 12px", background: T.card2, gridColumn: "1 / -1" }}>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: T.text4, marginBottom: 4 }}>Preset</div>
+                {art.preset
+                  ? <div style={{ fontSize: 14, fontWeight: 500, color: art.presetOk ? "#16a34a" : T.text, lineHeight: 1.3 }}>
+                      {noInfo(art.preset)}{art.presetOk && <span style={{ marginLeft: 6, fontSize: 11 }}>✓</span>}
+                    </div>
+                  : <div style={{ fontSize: 13, fontWeight: 400, color: T.text4, fontStyle: "italic" }}>Sin confirmar</div>}
+              </div>
+            </div>
+          </div>
+
+          {/* Conexiones */}
+          <div style={{ borderBottom: `0.5px solid ${T.border}` }}>
+            <div style={{ padding: "10px 16px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 12, color: T.text4 }}>🔌</span>
+              <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.07em", textTransform: "uppercase", color: T.text4 }}>Conexiones</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5px", background: T.border }}>
+              <div style={{ padding: "10px 12px", background: T.card2 }}>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: T.text4, marginBottom: 4 }}>Señal</div>
+                {art.signal
+                  ? <div style={{ fontSize: 14, fontWeight: 500, color: T.text, lineHeight: 1.3 }}>{noInfo(art.signal)}</div>
+                  : <div style={{ fontSize: 13, fontWeight: 400, color: T.text4, fontStyle: "italic" }}>sin confirmar</div>}
+              </div>
+              <div style={{ padding: "10px 12px", background: T.card2 }}>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase", color: T.text4, marginBottom: 4 }}>Conexión</div>
+                {art.connection
+                  ? <div style={{ fontSize: 14, fontWeight: 500, color: T.text, lineHeight: 1.3 }}>{noInfo(art.connection)}</div>
+                  : <div style={{ fontSize: 13, fontWeight: 400, color: T.text4, fontStyle: "italic" }}>sin confirmar</div>}
+              </div>
+            </div>
+          </div>
+
+          {/* TO LX / TO MON */}
           {(art.toLx || art.toMon) && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>
-              {art.toLx && <RouteChip icon="💡" label="TO LX" value={art.toLx} color="#ea580c" />}
-              {art.toMon && <RouteChip icon="🎧" label="TO MON" value={art.toMon} color="#7c3aed" />}
+            <div style={{ borderBottom: "0.5px solid #e2e8f0" }}>
+              <div style={{ padding: "10px 16px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.07em", textTransform: "uppercase", color: "#94a3b8" }}>Rutas</span>
+              </div>
+              <div style={{ padding: "0 12px 12px", display: "flex", flexDirection: "column", gap: 7 }}>
+                {art.toLx && <RouteChip icon="💡" label="TO LX" value={noInfo(art.toLx)} color="#ea580c" />}
+                {art.toMon && <RouteChip icon="🎧" label="TO MON" value={noInfo(art.toMon)} color="#7c3aed" />}
+              </div>
             </div>
           )}
 
+          {/* Extra slots estáticos del artista */}
           {(art.extraSlots || []).filter(s => s.label).length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>
-              {(art.extraSlots || []).filter(s => s.label).map(s => (
-                <RouteChip key={s.id} icon="📋" label={s.label} value={s.value || "—"} color="#2563eb" />
-              ))}
+            <div style={{ borderBottom: "0.5px solid #e2e8f0", padding: "0 12px 12px" }}>
+              <div style={{ padding: "10px 4px 8px", fontSize: 10, fontWeight: 500, letterSpacing: "0.07em", textTransform: "uppercase", color: "#94a3b8" }}>Campos extra (artista)</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {(art.extraSlots || []).filter(s => s.label).map(s => (
+                  <RouteChip key={s.id} icon="📋" label={s.label} value={s.value || "—"} color="#2563eb" />
+                ))}
+              </div>
             </div>
           )}
 
+          {/* Notas previas del artista */}
           {(art.comments || []).length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em", marginBottom: 6 }}>NOTAS PREVIAS</div>
+            <div style={{ borderBottom: "0.5px solid #e2e8f0", padding: "10px 16px 12px" }}>
+              <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.07em", textTransform: "uppercase", color: "#94a3b8", marginBottom: 8 }}>Notas previas</div>
               {art.comments.map((c, i) => (
-                <div key={i} style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5, padding: "6px 10px", background: "#f8fafc", borderLeft: "2px solid #cbd5e1", borderRadius: "0 6px 6px 0", marginBottom: 4 }}>{c}</div>
+                <div key={i} style={{ fontSize: 13, color: "#475569", lineHeight: 1.5, padding: "6px 10px", background: "#f8fafc", borderLeft: "2px solid #cbd5e1", borderRadius: "0 6px 6px 0", marginBottom: 4 }}>{c}</div>
               ))}
             </div>
           )}
@@ -1127,15 +1234,15 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
       {confirmDeleteArt && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
           onClick={() => setConfirmDeleteArt(false)}>
-          <div style={{ background: "#fff", borderRadius: 20, padding: 28, width: "100%", maxWidth: 340, boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}
+          <div style={{ background: T.card, borderRadius: 20, padding: 28, width: "100%", maxWidth: 340, boxShadow: "0 8px 40px rgba(0,0,0,0.3)" }}
             onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: 32, textAlign: "center", marginBottom: 12 }}>🗑️</div>
-            <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", textAlign: "center", letterSpacing: "0.04em", marginBottom: 8 }}>¿Borrar artista?</div>
-            <div style={{ fontSize: 13, color: "#64748b", textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>
-              Vas a borrar <strong style={{ color: "#0f172a" }}>{art.artist}</strong>. Esta acción no se puede deshacer.
+            <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: T.text, textAlign: "center", letterSpacing: "0.04em", marginBottom: 8 }}>¿Borrar artista?</div>
+            <div style={{ fontSize: 13, color: T.text3, textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>
+              Vas a borrar <strong style={{ color: T.text }}>{art.artist}</strong>. Esta acción no se puede deshacer.
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setConfirmDeleteArt(false)} style={{ flex: 1, padding: "14px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 14, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: "#334155" }}>Cancelar</button>
+              <button onClick={() => setConfirmDeleteArt(false)} style={{ flex: 1, padding: "14px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 12, fontSize: 14, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: T.text2 }}>Cancelar</button>
               <button onClick={() => { deleteArtist(art.id); setConfirmDeleteArt(false); setSelectedId(null); }} style={{ flex: 1, padding: "14px", background: "#ef4444", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: "#fff" }}>Sí, borrar</button>
             </div>
           </div>
@@ -1148,29 +1255,47 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
       <TopBar onBackBtn={onBack} />
-      <div style={{ flex: 1, padding: "12px 14px", background: "#f8fafc", overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
-        {artists.length === 0 && (
-          <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
-        )}
-        {artists.length > 0 && (
-          <span style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Ficha compacta</span>
-        )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {artists.map((a) => (
-            <CompactArtistCard
-              key={a.id}
-              a={a}
-              fest={fest}
-              day={day}
-              checks={checks}
-              toggleCheck={toggleCheck}
-              onSelect={setSelectedId}
-            />
-          ))}
+      {tab === "rulos" ? (
+        <div style={{ flex: 1, padding: "12px 14px", background: T.bg, overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+          <RulosView
+            rulos={day.rulos || []}
+            onAdd={() => { setEditRuloId(null); setShowRuloForm(true); }}
+            onEdit={(id) => { setEditRuloId(id); setShowRuloForm(true); }}
+            onDelete={deleteRulo}
+          />
         </div>
-        <button onClick={() => setShowAdd(true)} style={{ ...S.addBtn, marginTop: 14 }}>+ Añadir artista</button>
-      </div>
+      ) : (
+        <div style={{ flex: 1, padding: "12px 14px", background: T.bg, overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+          {artists.length === 0 && (
+            <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
+          )}
+          {artists.length > 0 && (
+            <span style={{ fontSize: 10, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Ficha compacta</span>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {artists.map((a) => (
+              <CompactArtistCard
+                key={a.id}
+                a={a}
+                fest={fest}
+                day={day}
+                checks={checks}
+                toggleCheck={toggleCheck}
+                onSelect={setSelectedId}
+              />
+            ))}
+          </div>
+          <button onClick={() => setShowAdd(true)} style={{ ...S.addBtn, marginTop: 14 }}>+ Añadir artista</button>
+        </div>
+      )}
       {showShare && <ShareModal fest={fest} onClose={() => setShowShare(false)} />}
+      {showRuloForm && (
+        <RuloFormModal
+          initial={editRuloId ? (day.rulos || []).find(r => r.id === editRuloId) : null}
+          onSave={saveRulo}
+          onClose={() => { setShowRuloForm(false); setEditRuloId(null); }}
+        />
+      )}
     </div>
   );
 }
@@ -1186,13 +1311,14 @@ function AddArtistScreen({ onAdd, onBack, initial }) {
     await onAdd(f);
   }
 
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
   return (
-    <div style={{ background: "#fff", borderRadius: 20, padding: 20, border: "2px dashed #e2e8f0", boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }}>
+    <div style={{ background: T.card, borderRadius: 20, padding: 20, border: `2px dashed ${T.border}`, boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: isEdit ? "#ede9fe" : "#fef9c3", border: `1px solid ${isEdit ? "#c4b5fd" : "#fde68a"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{isEdit ? "✏️" : "+"}</div>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: isEdit ? (dark ? "#3730a3" : "#ede9fe") : (dark ? "#713f12" : "#fef9c3"), border: `1px solid ${isEdit ? (dark ? "#4f46e5" : "#c4b5fd") : (dark ? "#92400e" : "#fde68a")}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{isEdit ? "✏️" : "+"}</div>
         <div>
-          <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em" }}>{isEdit ? "EDITAR ARTISTA" : "NUEVO ARTISTA"}</div>
-          <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 700 }}>{isEdit ? f.artist || "—" : "Añadir al día"}</div>
+          <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.15em" }}>{isEdit ? "EDITAR ARTISTA" : "NUEVO ARTISTA"}</div>
+          <div style={{ fontSize: 13, color: T.text, fontWeight: 700 }}>{isEdit ? f.artist || "—" : "Añadir al día"}</div>
         </div>
       </div>
       <input value={f.artist} onChange={e => set("artist", e.target.value)} placeholder="Nombre artista *" style={{ ...S.input, marginBottom: 8 }} autoFocus />
@@ -1225,25 +1351,26 @@ function ShareModal({ fest, onClose }) {
     navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   }
 
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "flex-end" }} onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "24px 20px 36px", width: "100%", maxWidth: 480, margin: "0 auto" }} onClick={e => e.stopPropagation()}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "flex-end" }} onClick={onClose}>
+      <div style={{ background: T.card, borderRadius: "20px 20px 0 0", padding: "24px 20px 36px", width: "100%", maxWidth: 480, margin: "0 auto" }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.15em" }}>COMPARTIR</div>
-            <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.04em" }}>{fest.name}</div>
+            <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.15em" }}>COMPARTIR</div>
+            <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em" }}>{fest.name}</div>
           </div>
           <button onClick={onClose} style={S.iconBtn}>✕</button>
         </div>
         <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <img src={qrUrl} alt="QR" style={{ width: 220, height: 220, borderRadius: 12, border: "1px solid #e2e8f0" }} />
-          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 8 }}>Escanea para importar el festival</div>
+          <img src={qrUrl} alt="QR" style={{ width: 220, height: 220, borderRadius: 12, border: `1px solid ${T.border}` }} />
+          <div style={{ fontSize: 11, color: T.text4, marginTop: 8 }}>Escanea para importar el festival</div>
         </div>
-        <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", marginBottom: 12, wordBreak: "break-all", fontSize: 10, color: "#64748b", maxHeight: 60, overflow: "hidden" }}>{url.slice(0, 120)}…</div>
-        <button onClick={copy} style={{ ...S.bigBtn, marginTop: 0, background: copied ? "#16a34a" : "#0f172a" }}>
+        <div style={{ background: T.card2, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, wordBreak: "break-all", fontSize: 10, color: T.text3, maxHeight: 60, overflow: "hidden" }}>{url.slice(0, 120)}…</div>
+        <button onClick={copy} style={{ ...S.bigBtn, marginTop: 0, background: copied ? "#16a34a" : (dark ? "#334155" : "#0f172a") }}>
           {copied ? "✓ Copiado" : "Copiar URL"}
         </button>
-        <div style={{ fontSize: 10, color: "#94a3b8", textAlign: "center", marginTop: 10 }}>Al abrir la URL, el festival se importa automáticamente</div>
+        <div style={{ fontSize: 10, color: T.text4, textAlign: "center", marginTop: 10 }}>Al abrir la URL, el festival se importa automáticamente</div>
       </div>
     </div>
   );
@@ -1261,12 +1388,13 @@ function ChainArrow({ color }) {
   return <div style={{ display: "flex", alignItems: "center", padding: "0 3px", color, fontSize: 13 }}>→</div>;
 }
 function RouteChip({ icon, label, value, color }) {
+  const { dark } = useTheme(); const T = dark ? DK : LT;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, background: `${color}0d`, border: `1px solid ${color}30`, borderRadius: 10, padding: "9px 12px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, background: `${color}${dark ? "22" : "0d"}`, border: `1px solid ${color}${dark ? "55" : "30"}`, borderRadius: 10, padding: "9px 12px" }}>
       <span style={{ fontSize: 15 }}>{icon}</span>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 8, color, letterSpacing: "0.15em", fontWeight: 700 }}>{label}</div>
-        <div style={{ fontSize: 12, color: "#334155", fontFamily: "monospace", lineHeight: 1.4, wordBreak: "break-word" }}>{value}</div>
+        <div style={{ fontSize: 12, color: T.text2, fontFamily: "monospace", lineHeight: 1.4, wordBreak: "break-word" }}>{value}</div>
       </div>
     </div>
   );
@@ -1277,6 +1405,11 @@ function ExtraSlots({ slots, onAdd, onDel, onEdit }) {
   const [newLabel, setNL] = useState("");
   const [newValue, setNV] = useState("");
   const [editingId, setEditId] = useState(null);
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
+  const slotBg = dark ? "#1e3a5f" : "#eff6ff";
+  const slotBorder = dark ? "#2563eb55" : "#bfdbfe";
+  const slotLabel = dark ? "#93c5fd" : "#2563eb";
+  const slotText = dark ? "#bfdbfe" : "#1e3a5f";
 
   function confirmAdd() {
     if (!newLabel.trim()) return;
@@ -1285,20 +1418,20 @@ function ExtraSlots({ slots, onAdd, onDel, onEdit }) {
 
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 9, color: "#2563eb", letterSpacing: "0.15em", marginBottom: 7, fontWeight: 700 }}>CAMPOS EXTRA</div>
+      <div style={{ fontSize: 9, color: slotLabel, letterSpacing: "0.15em", marginBottom: 7, fontWeight: 700 }}>CAMPOS EXTRA</div>
       {slots.map(s => (
         <div key={s.id} style={{ marginBottom: 7 }}>
           {editingId === s.id ? (
-            <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: 10 }}>
+            <div style={{ background: slotBg, border: `1px solid ${slotBorder}`, borderRadius: 10, padding: 10 }}>
               <input value={s.label} onChange={e => onEdit(s.id, "label", e.target.value)} style={{ ...S.input, marginBottom: 6, fontWeight: 700 }} placeholder="Etiqueta" />
               <input value={s.value} onChange={e => onEdit(s.id, "value", e.target.value)} style={{ ...S.input, marginBottom: 8 }} placeholder="Valor" />
               <button onClick={() => setEditId(null)} style={S.smBtn}>Hecho</button>
             </div>
           ) : (
-            <div onClick={() => setEditId(s.id)} style={{ display: "flex", alignItems: "center", gap: 10, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "9px 12px", cursor: "pointer" }}>
+            <div onClick={() => setEditId(s.id)} style={{ display: "flex", alignItems: "center", gap: 10, background: slotBg, border: `1px solid ${slotBorder}`, borderRadius: 10, padding: "9px 12px", cursor: "pointer" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 8, color: "#2563eb", letterSpacing: "0.15em", fontWeight: 700 }}>{s.label}</div>
-                <div style={{ fontSize: 13, color: "#1e3a5f", fontFamily: "monospace", marginTop: 2, wordBreak: "break-word" }}>{s.value || "—"}</div>
+                <div style={{ fontSize: 8, color: slotLabel, letterSpacing: "0.15em", fontWeight: 700 }}>{s.label}</div>
+                <div style={{ fontSize: 13, color: slotText, fontFamily: "monospace", marginTop: 2, wordBreak: "break-word" }}>{s.value || "—"}</div>
               </div>
               <button onClick={e => { e.stopPropagation(); onDel(s.id); }} style={S.iconBtn}>×</button>
             </div>
@@ -1306,7 +1439,7 @@ function ExtraSlots({ slots, onAdd, onDel, onEdit }) {
         </div>
       ))}
       {adding ? (
-        <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: 10 }}>
+        <div style={{ background: slotBg, border: `1px solid ${slotBorder}`, borderRadius: 10, padding: 10 }}>
           <input value={newLabel} onChange={e => setNL(e.target.value)} placeholder="Etiqueta (RF, Backline…)" autoFocus style={{ ...S.input, marginBottom: 6, fontWeight: 700 }} />
           <input value={newValue} onChange={e => setNV(e.target.value)} placeholder="Valor" onKeyDown={e => { if (e.key === "Enter") confirmAdd(); }} style={{ ...S.input, marginBottom: 8 }} />
           <div style={{ display: "flex", gap: 6 }}>
@@ -1315,7 +1448,7 @@ function ExtraSlots({ slots, onAdd, onDel, onEdit }) {
           </div>
         </div>
       ) : (
-        <button onClick={() => setAdding(true)} style={{ ...S.addBtn, color: "#2563eb", borderColor: "#bfdbfe", background: "#eff6ff" }}>+ Nuevo campo</button>
+        <button onClick={() => setAdding(true)} style={{ ...S.addBtn, color: slotLabel, borderColor: slotBorder, background: slotBg }}>+ Nuevo campo</button>
       )}
     </div>
   );
@@ -1324,12 +1457,18 @@ function ExtraSlots({ slots, onAdd, onDel, onEdit }) {
 function FohNotes({ notes, onAdd, onDel }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
+  const noteBg = dark ? "#292524" : "#fffbeb";
+  const noteBorder = dark ? "#92400e" : "#fcd34d";
+  const noteText = dark ? "#fde68a" : "#92400e";
+  const noteLabel = dark ? "#fbbf24" : "#d97706";
+
   return (
-    <div>
-      <div style={{ fontSize: 9, color: "#d97706", letterSpacing: "0.15em", marginBottom: 7, fontWeight: 700 }}>NOTAS FOH (turno)</div>
+    <div style={{ padding: "12px 16px" }}>
+      <div style={{ fontSize: 9, color: noteLabel, letterSpacing: "0.15em", marginBottom: 7, fontWeight: 700 }}>NOTAS FOH (turno)</div>
       {notes.map((n, i) => (
         <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 5 }}>
-          <div style={{ flex: 1, fontSize: 12, color: "#92400e", lineHeight: 1.5, padding: "7px 10px", background: "#fffbeb", borderLeft: "2px solid #fcd34d", borderRadius: "0 6px 6px 0" }}>{n.text}</div>
+          <div style={{ flex: 1, fontSize: 12, color: noteText, lineHeight: 1.5, padding: "7px 10px", background: noteBg, borderLeft: `2px solid ${noteBorder}`, borderRadius: "0 6px 6px 0" }}>{n.text}</div>
           <button onClick={() => onDel(i)} style={S.iconBtn}>×</button>
         </div>
       ))}
@@ -1338,11 +1477,11 @@ function FohNotes({ notes, onAdd, onDel }) {
           <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={2} autoFocus
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onAdd(draft); setDraft(""); setEditing(false); } }}
             placeholder="Nota para tu compañero…"
-            style={{ ...S.input, flex: 1, resize: "none", borderColor: "#fcd34d" }} />
+            style={{ ...S.input, flex: 1, resize: "none", borderColor: noteBorder }} />
           <button onClick={() => { onAdd(draft); setDraft(""); setEditing(false); }} style={{ ...S.smBtn, background: "#f59e0b", color: "#fff" }}>OK</button>
         </div>
       ) : (
-        <button onClick={() => setEditing(true)} style={{ ...S.addBtn, color: "#d97706", borderColor: "#fcd34d", background: "#fffbeb" }}>+ Añadir nota</button>
+        <button onClick={() => setEditing(true)} style={{ ...S.addBtn, color: noteLabel, borderColor: noteBorder, background: noteBg, marginTop: 0 }}>+ Añadir nota</button>
       )}
     </div>
   );
@@ -1357,29 +1496,25 @@ function FestEditModal({ fest, onSave, onClose }) {
     onSave({ ...fest, name: name.trim() });
   }
 
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
       onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", padding: "24px 20px 36px", width: "100%", maxWidth: 480 }}
+      <div style={{ background: T.card, borderRadius: "20px 20px 0 0", padding: "24px 20px 36px", width: "100%", maxWidth: 480 }}
         onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: "#0f172a", letterSpacing: "0.05em" }}>EDITAR FESTIVAL</div>
+          <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.05em" }}>EDITAR FESTIVAL</div>
           <button onClick={onClose} style={S.iconBtn}>✕</button>
         </div>
 
-        <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: "0.1em", marginBottom: 6 }}>NOMBRE</div>
-        <input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          style={{ ...S.input, marginBottom: 20 }}
-          autoFocus
-        />
+        <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 6 }}>NOMBRE</div>
+        <input value={name} onChange={e => setName(e.target.value)} style={{ ...S.input, marginBottom: 20 }} autoFocus />
 
         <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 14, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: "#334155" }}>
+          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 12, fontSize: 14, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", color: T.text2 }}>
             Cancelar
           </button>
-          <button onClick={save} disabled={!name.trim()} style={{ flex: 1, padding: "14px", background: "#0f172a", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed", fontFamily: "'JetBrains Mono',monospace", color: "#fff", opacity: name.trim() ? 1 : 0.4 }}>
+          <button onClick={save} disabled={!name.trim()} style={{ flex: 1, padding: "14px", background: dark ? "#334155" : "#0f172a", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed", fontFamily: "'JetBrains Mono',monospace", color: "#fff", opacity: name.trim() ? 1 : 0.4 }}>
             Guardar
           </button>
         </div>
@@ -1395,18 +1530,19 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
   const showDone = !!checks[`${k}__show`];
   const ok = scDone && showDone;
   const color = sigColor(a.signal);
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
 
-  const cardBg = "#fff";
-  const cardText = "#0f172a";
-  const borderC = "#e2e8f0";
-  const chipBg = "#f8fafc";
-  const chipBorder = "#e2e8f0";
-  const textTertiary = "#94a3b8";
-  const textSecondary = "#64748b";
+  const cardBg = T.card;
+  const cardText = T.text;
+  const borderC = T.border;
+  const chipBg = T.card2;
+  const chipBorder = T.border;
+  const textTertiary = T.text4;
+  const textSecondary = T.text3;
   const accentLeft = ok ? "#16a34a" : color;
 
   return (
-    <div style={{ background: "#f8fafc", borderRadius: 14, padding: "0.75rem" }}>
+    <div style={{ background: T.bg, borderRadius: 14, padding: "0.75rem" }}>
 
       {/* main card */}
       <div
@@ -1433,12 +1569,12 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
             {a.tecnico && (
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: 9, color: textTertiary, textTransform: "uppercase", letterSpacing: "0.06em" }}>técnico</div>
-                <div style={{ fontSize: 13, fontWeight: 500, fontFamily: "monospace" }}>{a.tecnico}</div>
+                <div style={{ fontSize: 13, fontWeight: 500, fontFamily: "monospace" }}>{noInfo(a.tecnico)}</div>
               </div>
             )}
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 9, color: textTertiary, textTransform: "uppercase", letterSpacing: "0.06em" }}>mesa</div>
-              <div style={{ fontSize: 15, fontWeight: 500, fontFamily: "monospace" }}>{a.console || "—"}</div>
+              <div style={{ fontSize: 15, fontWeight: 500, fontFamily: "monospace" }}>{noInfo(a.console) || "—"}</div>
             </div>
           </div>
         </div>
@@ -1446,15 +1582,15 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
         {/* signal chain chips */}
         <div style={{ display: "flex", alignItems: "center", gap: 5, margin: "10px 0", flexWrap: "wrap" }}>
           <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color: cardText }}>
-            {a.connection || "—"}
+            {noInfo(a.connection) || "—"}
           </span>
           <span style={{ fontSize: 12, color: textTertiary }}>→</span>
           <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color }}>
-            {a.signal || "—"}
+            {noInfo(a.signal) || "—"}
           </span>
           <span style={{ fontSize: 12, color: textTertiary }}>→</span>
           <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color: cardText }}>
-            {a.console || "—"}
+            {noInfo(a.console) || "—"}
           </span>
           {a.preset && (
             <span style={{
@@ -1465,7 +1601,7 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
               color: a.presetOk ? "#16a34a" : textSecondary,
               display: "inline-flex", alignItems: "center", gap: 4,
             }}>
-              ⚙ {a.preset}
+              ⚙ {noInfo(a.preset)}
             </span>
           )}
         </div>
@@ -1473,11 +1609,11 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
         {/* footer: lx · mon · ok/checks */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: textSecondary, paddingTop: 8, borderTop: `0.5px solid ${borderC}` }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: a.toLx ? 1 : 0.5 }}>
-            💡 LX <strong style={{ color: cardText, fontWeight: 500 }}>{a.toLx || "No"}</strong>
+            💡 LX <strong style={{ color: cardText, fontWeight: 500 }}>{noInfo(a.toLx) || "No"}</strong>
           </span>
           <span style={{ color: textTertiary }}>·</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: a.toMon ? 1 : 0.5 }}>
-            🎧 Mon <strong style={{ color: cardText, fontWeight: 500 }}>{a.toMon || "No"}</strong>
+            🎧 Mon <strong style={{ color: cardText, fontWeight: 500 }}>{noInfo(a.toMon) || "No"}</strong>
           </span>
           {ok && (
             <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "1px 7px" }}>✓ OK</span>
@@ -1488,36 +1624,247 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
   );
 }
 
-/* ---------- styles ---------- */
-const S = {
-  app: { height: "100dvh", overflow: "hidden", background: "#f8fafc", fontFamily: "'JetBrains Mono',monospace", width: "100%", color: "#0f172a" },
-  festCard: { display: "flex", alignItems: "center", gap: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "14px 16px", marginBottom: 10, cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" },
-  bigBtn: { width: "100%", padding: "18px", background: "#0f172a", color: "#fff", border: "none", borderRadius: 16, fontSize: 16, fontWeight: 700, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.1em", cursor: "pointer", marginTop: 10 },
-  iconBtn: { background: "none", border: "none", color: "#94a3b8", fontSize: 20, cursor: "pointer", padding: "6px 8px" },
-  backBtn: { background: "#f1f5f9", border: "1px solid #e2e8f0", color: "#334155", fontSize: 22, width: 44, height: 44, borderRadius: 12, cursor: "pointer", lineHeight: 1 },
-  input: { width: "100%", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, color: "#0f172a", fontSize: 16, padding: "13px 14px", fontFamily: "monospace", outline: "none" },
-  daySection: { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: 16, marginBottom: 14 },
-  artForm: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, marginBottom: 12 },
-  addBtn: { width: "100%", padding: "14px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, color: "#64748b", fontSize: 14, cursor: "pointer", fontFamily: "monospace", marginTop: 8 },
-  smBtn: { padding: "10px 16px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, color: "#334155", fontSize: 13, cursor: "pointer" },
-  topBar: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px 8px", position: "sticky", top: 0, background: "#fff", zIndex: 10, borderBottom: "1px solid #e2e8f0" },
-  syncBtn: { background: "none", border: "1px solid #e2e8f0", borderRadius: 10, color: "#94a3b8", fontSize: 11, padding: "8px 11px", cursor: "pointer" },
-  navBtn: { flex: 1, padding: "16px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, color: "#334155", fontSize: 14, cursor: "pointer", fontFamily: "monospace" },
-};
+/* ---------- rulos ---------- */
+const RULO_TYPES = ["OPTOCORE", "RJ / CAT6", "FIBRA", "OPTICALCON", "MULTIPAR", "ETHERNET", "OTRO"];
 
-function Style() {
+function ruloColor(type) {
+  const t = (type || "").toUpperCase();
+  if (t.includes("OPTOCORE") || t.includes("FIBRA")) return "#16a34a";
+  if (t.includes("RJ") || t.includes("CAT")) return "#7c3aed";
+  if (t.includes("OPTICAL")) return "#2563eb";
+  if (t.includes("MULTIPAR")) return "#ea580c";
+  if (t.includes("ETHERNET")) return "#0891b2";
+  return "#64748b";
+}
+
+function RulosView({ rulos, onAdd, onEdit, onDelete }) {
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
+  const [confirmId, setConfirmId] = useState(null);
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <span style={{ fontSize: 10, letterSpacing: "0.08em", color: T.text4, textTransform: "uppercase" }}>
+          {rulos.length} {rulos.length === 1 ? "conexión" : "conexiones"}
+        </span>
+      </div>
+
+      {rulos.length === 0 && (
+        <div style={{ textAlign: "center", color: T.text4, fontSize: 13, marginTop: 40, lineHeight: 2 }}>
+          Sin conexiones definidas.<br />
+          <span style={{ fontSize: 11 }}>Añade cables, fibras y rulos del escenario.</span>
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {rulos.map(r => (
+          <RuloCard key={r.id} r={r} onEdit={() => onEdit(r.id)} onDelete={() => setConfirmId(r.id)} />
+        ))}
+      </div>
+
+      <button onClick={onAdd} style={{ ...S.addBtn, marginTop: 14 }}>+ Añadir conexión</button>
+
+      {confirmId && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+          onClick={() => setConfirmId(null)}>
+          <div style={{ background: T.card, borderRadius: 20, padding: 28, width: "100%", maxWidth: 320, boxShadow: "0 8px 40px rgba(0,0,0,0.3)" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 28, textAlign: "center", marginBottom: 10 }}>🗑️</div>
+            <div style={{ fontSize: 13, color: T.text3, textAlign: "center", marginBottom: 20 }}>¿Borrar esta conexión?</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setConfirmId(null)} style={{ flex: 1, padding: "13px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 12, fontSize: 13, cursor: "pointer", fontFamily: "monospace", color: T.text2 }}>Cancelar</button>
+              <button onClick={() => { onDelete(confirmId); setConfirmId(null); }} style={{ flex: 1, padding: "13px", background: "#ef4444", border: "none", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", color: "#fff" }}>Borrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RuloCard({ r, onEdit, onDelete }) {
+  const { dark } = useTheme(); const T = dark ? DK : LT;
+  const color = ruloColor(r.type);
+  const bg = dark ? `${color}18` : `${color}0d`;
+  const border = dark ? `${color}44` : `${color}28`;
+
+  return (
+    <div style={{ background: T.card, border: `0.5px solid ${T.border}`, borderRadius: 16, overflow: "hidden" }}>
+      {/* colored top accent + type badge */}
+      <div style={{ height: 3, background: color }} />
+      <div style={{ padding: "12px 14px" }}>
+        {/* type + qty + actions */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "monospace", padding: "3px 9px", borderRadius: 8, background: bg, border: `1px solid ${border}`, color, letterSpacing: "0.04em" }}>
+              {r.type || "CABLE"}
+            </span>
+            {r.qty && (
+              <span style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: "monospace" }}>{r.qty}</span>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            <button onClick={onEdit} style={{ background: T.card2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "4px 9px", fontSize: 12, color: T.text3, cursor: "pointer" }}>✏️</button>
+            <button onClick={onDelete} style={{ background: "none", border: "none", padding: "4px 6px", fontSize: 14, color: "#94a3b8", cursor: "pointer" }}>×</button>
+          </div>
+        </div>
+
+        {/* description */}
+        {r.desc && (
+          <div style={{ fontSize: 15, fontWeight: 500, color: T.text, marginBottom: 10, lineHeight: 1.3 }}>{noInfo(r.desc)}</div>
+        )}
+
+        {/* DE → PARA diagram */}
+        {(r.from || r.to) && (
+          <div style={{ display: "flex", alignItems: "stretch", gap: 0, marginBottom: r.note ? 10 : 0 }}>
+            <div style={{ flex: 1, background: bg, border: `1px solid ${border}`, borderRadius: "10px 0 0 10px", padding: "8px 10px" }}>
+              <div style={{ fontSize: 8, color, letterSpacing: "0.12em", fontWeight: 700, marginBottom: 3 }}>DE</div>
+              <div style={{ fontSize: 12, color: T.text, fontFamily: "monospace", lineHeight: 1.3 }}>{noInfo(r.from) || "—"}</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", background: bg, border: `1px solid ${border}`, borderLeft: "none", borderRight: "none", padding: "0 6px", color, fontSize: 14 }}>→</div>
+            <div style={{ flex: 1, background: bg, border: `1px solid ${border}`, borderRadius: "0 10px 10px 0", padding: "8px 10px" }}>
+              <div style={{ fontSize: 8, color, letterSpacing: "0.12em", fontWeight: 700, marginBottom: 3 }}>PARA</div>
+              <div style={{ fontSize: 12, color: T.text, fontFamily: "monospace", lineHeight: 1.3 }}>{noInfo(r.to) || "—"}</div>
+            </div>
+          </div>
+        )}
+
+        {/* note */}
+        {r.note && (
+          <div style={{ fontSize: 12, color: "#92400e", lineHeight: 1.5, padding: "6px 10px", background: "#fffbeb", borderLeft: "2px solid #fcd34d", borderRadius: "0 6px 6px 0", marginTop: r.from || r.to ? 8 : 0 }}>
+            ⚠️ {r.note}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RuloFormModal({ initial, onSave, onClose }) {
+  const isEdit = !!initial;
+  const [f, setF] = useState(initial ? {
+    type: initial.type || "OPTOCORE",
+    qty: initial.qty || "",
+    desc: initial.desc || "",
+    from: initial.from || "",
+    to: initial.to || "",
+    note: initial.note || "",
+  } : { type: "OPTOCORE", qty: "", desc: "", from: "", to: "", note: "" });
+
+  const set = (k, v) => setF(p => ({ ...p, [k]: v }));
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
+
+  function confirm() {
+    if (!f.desc.trim() && !f.from.trim() && !f.to.trim()) return;
+    onSave(f);
+  }
+
+  const valid = f.desc.trim() || f.from.trim() || f.to.trim();
+  const color = ruloColor(f.type);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "flex-end" }} onClick={onClose}>
+      <div style={{ background: T.card, borderRadius: "20px 20px 0 0", padding: "24px 20px 36px", width: "100%", maxWidth: 480, margin: "0 auto", maxHeight: "90dvh", overflowY: "auto" }}
+        onClick={e => e.stopPropagation()}>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.15em" }}>CONEXIÓN</div>
+            <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em" }}>
+              {isEdit ? "EDITAR RULO" : "NUEVO RULO"}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: T.text4, fontSize: 20, cursor: "pointer", padding: "6px 8px" }}>✕</button>
+        </div>
+
+        {/* type selector */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 8 }}>TIPO DE CABLE</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {RULO_TYPES.map(t => {
+              const tc = ruloColor(t);
+              const active = f.type === t;
+              return (
+                <button key={t} onClick={() => set("type", t)} style={{
+                  padding: "5px 12px", borderRadius: 8, fontSize: 12, fontFamily: "monospace",
+                  border: `1.5px solid ${active ? tc : T.border}`,
+                  background: active ? `${tc}18` : T.card2,
+                  color: active ? tc : T.text3,
+                  cursor: "pointer", fontWeight: active ? 700 : 400,
+                }}>{t}</button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          <div style={{ flex: 0.4 }}>
+            <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 6 }}>CANTIDAD</div>
+            <input value={f.qty} onChange={e => set("qty", e.target.value)} placeholder="2×" style={S.input} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 6 }}>DESCRIPCIÓN</div>
+            <input value={f.desc} onChange={e => set("desc", e.target.value)} placeholder="Ej: HMA OPTOCORE Festival Box" style={S.input} autoFocus />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 6 }}>DE (origen)</div>
+          <input value={f.from} onChange={e => set("from", e.target.value)} placeholder="Ej: Festival Box (centro)" style={S.input} />
+        </div>
+
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 6 }}>PARA (destino)</div>
+          <input value={f.to} onChange={e => set("to", e.target.value)} placeholder="Ej: FOH Principal" style={S.input} />
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 6 }}>NOTA (opcional)</div>
+          <input value={f.note} onChange={e => set("note", e.target.value)} placeholder="Ej: El sábado mover a Cultura Jaén SL" style={S.input} />
+        </div>
+
+        <button onClick={confirm} disabled={!valid} style={{ ...S.bigBtn, marginTop: 0, opacity: valid ? 1 : 0.4 }}>
+          {isEdit ? "GUARDAR CAMBIOS" : "AÑADIR CONEXIÓN"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- styles ---------- */
+function makeS(T) {
+  return {
+    app: { height: "100dvh", overflow: "hidden", background: T.bg, fontFamily: "'JetBrains Mono',monospace", width: "100%", color: T.text },
+    festCard: { display: "flex", alignItems: "center", gap: 12, background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 10, cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" },
+    bigBtn: { width: "100%", padding: "18px", background: T.bg === DK.bg ? "#334155" : "#0f172a", color: T.bg === DK.bg ? "#f1f5f9" : "#fff", border: "none", borderRadius: 16, fontSize: 16, fontWeight: 700, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.1em", cursor: "pointer", marginTop: 10 },
+    iconBtn: { background: "none", border: "none", color: T.text4, fontSize: 20, cursor: "pointer", padding: "6px 8px" },
+    backBtn: { background: T.card2, border: `1px solid ${T.border}`, color: T.text2, fontSize: 22, width: 44, height: 44, borderRadius: 12, cursor: "pointer", lineHeight: 1 },
+    input: { width: "100%", background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, color: T.text, fontSize: 16, padding: "13px 14px", fontFamily: "monospace", outline: "none" },
+    daySection: { background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: 16, marginBottom: 14 },
+    artForm: { background: T.card2, border: `1px solid ${T.border}`, borderRadius: 12, padding: 14, marginBottom: 12 },
+    addBtn: { width: "100%", padding: "14px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 10, color: T.text3, fontSize: 14, cursor: "pointer", fontFamily: "monospace", marginTop: 8 },
+    smBtn: { padding: "10px 16px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 10, color: T.text2, fontSize: 13, cursor: "pointer" },
+    topBar: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px 8px", position: "sticky", top: 0, background: T.card, zIndex: 10, borderBottom: `1px solid ${T.border}` },
+    syncBtn: { background: "none", border: `1px solid ${T.border}`, borderRadius: 10, color: T.text4, fontSize: 11, padding: "8px 11px", cursor: "pointer" },
+    navBtn: { flex: 1, padding: "16px", background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, color: T.text2, fontSize: 14, cursor: "pointer", fontFamily: "monospace" },
+  };
+}
+
+function Style({ dark }) {
   useEffect(() => {
     let meta = document.querySelector('meta[name="viewport"]');
     if (!meta) { meta = document.createElement("meta"); meta.name = "viewport"; document.head.appendChild(meta); }
     meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no";
   }, []);
+  useEffect(() => {
+    document.body.style.background = dark ? DK.bg : LT.bg;
+  }, [dark]);
   return <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap');
     * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
-    body { background:#f8fafc; }
     ::-webkit-scrollbar { width:4px; height:4px; }
-    ::-webkit-scrollbar-thumb { background:#e2e8f0; border-radius:2px; }
-    input::placeholder, textarea::placeholder { color:#cbd5e1; }
+    ::-webkit-scrollbar-thumb { background:#334155; border-radius:2px; }
+    input::placeholder, textarea::placeholder { color:#64748b; }
     input, textarea, select { font-size:16px !important; }
     button { font-family:'JetBrains Mono',monospace; }
   `}</style>;
