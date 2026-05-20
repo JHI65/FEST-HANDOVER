@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useContext, createContext, useCallback } from "react";
-import QRCode from "qrcode";
 import { supabase } from "./supabase";
 
 /* ---------- seed ---------- */
@@ -779,6 +778,7 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
   const [editMode, setEditMode] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [renameVal, setRenameVal] = useState("");
+  const [showShare, setShowShare] = useState(false);
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
 
   function addStage() {
@@ -805,7 +805,9 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
         <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.06em" }}>
           {activeStage ? activeStage.name : fest.name}
         </div>
-        <div style={{ width: 44 }} />
+        <button onClick={() => setShowShare(true)} style={S.syncBtn}>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="currentColor" strokeWidth="2"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="currentColor" strokeWidth="2"/></svg>
+        </button>
       </div>
 
       <div style={{ flex: 1, padding: "16px 14px", background: T.bg, overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
@@ -898,6 +900,7 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
           </>
         )}
       </div>
+      {showShare && <ShareModal fest={fest} onClose={() => setShowShare(false)} />}
     </div>
   );
 }
@@ -1437,22 +1440,17 @@ function ShareModal({ fest, onClose }) {
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(fest))));
   const url = `${window.location.origin}/FEST-HANDOVER/?fest=${encoded}`;
   const [copied, setCopied] = useState(false);
-  const [qrError, setQrError] = useState(false);
-  const canvasRef = useRef(null);
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
-
-  useEffect(() => {
-    if (canvasRef.current) {
-      setQrError(false);
-      QRCode.toCanvas(canvasRef.current, url, {
-        width: 220, margin: 2,
-        color: { dark: dark ? "#f1f5f9" : "#0f172a", light: dark ? "#1e293b" : "#ffffff" },
-      }).catch(() => setQrError(true));
-    }
-  }, [url, dark]);
 
   function copy() {
     navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+  }
+
+  async function share() {
+    if (navigator.share) {
+      try { await navigator.share({ title: fest.name, text: `Festival ${fest.name}`, url }); return; } catch { /* cancelado */ }
+    }
+    copy();
   }
 
   return (
@@ -1465,22 +1463,17 @@ function ShareModal({ fest, onClose }) {
           </div>
           <button onClick={onClose} style={S.iconBtn}>✕</button>
         </div>
-        {qrError ? (
-          <div style={{ textAlign: "center", marginBottom: 16, padding: "24px 16px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 14 }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
-            <div style={{ fontSize: 13, color: T.text2, fontFamily: "monospace", lineHeight: 1.5 }}>El festival tiene demasiados datos para generar un QR.<br/>Usa el enlace para compartirlo.</div>
-          </div>
-        ) : (
-          <div style={{ textAlign: "center", marginBottom: 16 }}>
-            <canvas ref={canvasRef} style={{ borderRadius: 12, border: `1px solid ${T.border}` }} />
-            <div style={{ fontSize: 11, color: T.text4, marginTop: 8 }}>Escanea para importar el festival</div>
-          </div>
-        )}
+        <div style={{ textAlign: "center", marginBottom: 16, padding: "20px 16px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 14 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🔗</div>
+          <div style={{ fontSize: 13, color: T.text2, fontFamily: "monospace", lineHeight: 1.5 }}>Comparte el enlace.<br/>Al abrirlo, el festival se importa automáticamente.</div>
+        </div>
         <div style={{ background: T.card2, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, wordBreak: "break-all", fontSize: 10, color: T.text3, maxHeight: 60, overflow: "hidden" }}>{url.slice(0, 120)}…</div>
-        <button onClick={copy} style={{ ...S.bigBtn, marginTop: 0, background: copied ? "#16a34a" : (dark ? "#334155" : "#0f172a") }}>
-          {copied ? "✓ Copiado" : "Copiar URL"}
-        </button>
-        <div style={{ fontSize: 10, color: T.text4, textAlign: "center", marginTop: 10 }}>Al abrir la URL, el festival se importa automáticamente</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={share} style={{ ...S.bigBtn, marginTop: 0, flex: 1, background: dark ? "#334155" : "#0f172a" }}>Compartir</button>
+          <button onClick={copy} style={{ ...S.bigBtn, marginTop: 0, flex: 1, background: copied ? "#16a34a" : T.card2, color: copied ? "#fff" : T.text2, border: `1px solid ${T.border}` }}>
+            {copied ? "✓ Copiado" : "Copiar URL"}
+          </button>
+        </div>
       </div>
     </div>
   );
