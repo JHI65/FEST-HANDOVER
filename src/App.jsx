@@ -1662,11 +1662,19 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
           <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color: cardText }}>
             {noInfo(a.connection) || "—"}
           </span>
-          <span style={{ fontSize: 12, color: textTertiary }}>→</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+            <span style={{ display: "block", width: 8, height: 1, background: textTertiary, opacity: 0.4, borderRadius: 1 }} />
+            <span style={{ display: "block", width: 3, height: 3, borderRadius: "50%", background: textTertiary, opacity: 0.4 }} />
+            <span style={{ display: "block", width: 8, height: 1, background: textTertiary, opacity: 0.4, borderRadius: 1 }} />
+          </span>
           <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color }}>
             {noInfo(a.signal) || "—"}
           </span>
-          <span style={{ fontSize: 12, color: textTertiary }}>→</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+            <span style={{ display: "block", width: 8, height: 1, background: textTertiary, opacity: 0.4, borderRadius: 1 }} />
+            <span style={{ display: "block", width: 3, height: 3, borderRadius: "50%", background: textTertiary, opacity: 0.4 }} />
+            <span style={{ display: "block", width: 8, height: 1, background: textTertiary, opacity: 0.4, borderRadius: 1 }} />
+          </span>
           <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color: cardText }}>
             {noInfo(a.console) || "—"}
           </span>
@@ -1799,7 +1807,11 @@ function RuloCard({ r, onEdit, onDelete }) {
               <div style={{ fontSize: 8, color, letterSpacing: "0.12em", fontWeight: 700, marginBottom: 3 }}>DE</div>
               <div style={{ fontSize: 12, color: T.text, fontFamily: "monospace", lineHeight: 1.3 }}>{noInfo(r.from) || "—"}</div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", background: bg, border: `1px solid ${border}`, borderLeft: "none", borderRight: "none", padding: "0 6px", color, fontSize: 14 }}>→</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 2, background: bg, border: `1px solid ${border}`, borderLeft: "none", borderRight: "none", padding: "0 6px" }}>
+              <div style={{ width: 6, height: 1, background: color, opacity: 0.5, borderRadius: 1 }} />
+              <div style={{ width: 3, height: 3, borderRadius: "50%", background: color, opacity: 0.5 }} />
+              <div style={{ width: 6, height: 1, background: color, opacity: 0.5, borderRadius: 1 }} />
+            </div>
             <div style={{ flex: 1, background: bg, border: `1px solid ${border}`, borderRadius: "0 10px 10px 0", padding: "8px 10px" }}>
               <div style={{ fontSize: 8, color, letterSpacing: "0.12em", fontWeight: 700, marginBottom: 3 }}>PARA</div>
               <div style={{ fontSize: 12, color: T.text, fontFamily: "monospace", lineHeight: 1.3 }}>{noInfo(r.to) || "—"}</div>
