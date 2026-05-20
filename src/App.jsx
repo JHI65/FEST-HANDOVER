@@ -951,40 +951,29 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
   }
 
   function saveRulo(fields) {
+    // remove from both lists first, then add to the right one — single update
+    let newDayRulos = (day.rulos || []).filter(r => r.id !== editRuloId);
+    let newPermRulos = (stage.rulos || []).filter(r => r.id !== editRuloId);
+    const id = editRuloId || uid();
     if (fields.permanent) {
-      const permRulos = stage.rulos || [];
-      if (editRuloId) {
-        onEditFest(updatePermRulos(permRulos.map(r => r.id === editRuloId ? { ...r, ...fields } : r)));
-        // remove from day rulos if it was there before
-        onEditFest(updateDayRulos((day.rulos || []).filter(r => r.id !== editRuloId)));
-      } else {
-        onEditFest(updatePermRulos([...permRulos, { id: uid(), ...fields }]));
-      }
+      newPermRulos = [...newPermRulos, { ...fields, id }];
     } else {
-      const dayRulos = day.rulos || [];
-      if (editRuloId) {
-        // might be in perm or day rulos
-        const inPerm = (stage.rulos || []).find(r => r.id === editRuloId);
-        if (inPerm) {
-          onEditFest(updatePermRulos((stage.rulos || []).filter(r => r.id !== editRuloId)));
-          onEditFest(updateDayRulos([...dayRulos, { ...fields, id: editRuloId }]));
-        } else {
-          onEditFest(updateDayRulos(dayRulos.map(r => r.id === editRuloId ? { ...r, ...fields } : r)));
-        }
-      } else {
-        onEditFest(updateDayRulos([...dayRulos, { id: uid(), ...fields }]));
-      }
+      newDayRulos = [...newDayRulos, { ...fields, id }];
     }
+    const newDays = stage.days.map((d, i) => i === dayIdx ? { ...d, rulos: newDayRulos } : d);
+    const newStages = (fest.stages || []).map(s => s.id === stage.id ? { ...s, days: newDays, rulos: newPermRulos } : s);
+    onEditFest({ ...fest, stages: newStages });
     setShowRuloForm(false);
     setEditRuloId(null);
+    setPrefillPos(null);
   }
 
   function deleteRulo(id, isPerm) {
-    if (isPerm) {
-      onEditFest(updatePermRulos((stage.rulos || []).filter(r => r.id !== id)));
-    } else {
-      onEditFest(updateDayRulos((day.rulos || []).filter(r => r.id !== id)));
-    }
+    let newDayRulos = (day.rulos || []).filter(r => r.id !== id);
+    let newPermRulos = (stage.rulos || []).filter(r => r.id !== id);
+    const newDays = stage.days.map((d, i) => i === dayIdx ? { ...d, rulos: newDayRulos } : d);
+    const newStages = (fest.stages || []).map(s => s.id === stage.id ? { ...s, days: newDays, rulos: newPermRulos } : s);
+    onEditFest({ ...fest, stages: newStages });
   }
 
   function addDay() {
@@ -1764,44 +1753,45 @@ function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
     ...permRulos.map(r => ({ ...r, _perm: true })),
     ...rulos.map(r => ({ ...r, _perm: false })),
   ];
-
   const byPos = pos => allRulos.filter(r => r.position === pos);
   const noPos = allRulos.filter(r => !POSITIONS.includes(r.position));
-  const total = allRulos.length;
+
+  function RuloChip({ r }) {
+    const color = ruloColor(r.type);
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 4, background: dark ? `${color}18` : `${color}0d`, border: `1px solid ${dark ? color + "44" : color + "28"}`, borderRadius: 8, padding: "5px 7px", cursor: "pointer", position: "relative" }}
+        onClick={() => onEdit(r.id)}>
+        {r._perm && <span style={{ fontSize: 8, lineHeight: 1 }}>📌</span>}
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{r.type || "CABLE"}{r.qty ? ` ×${r.qty}` : ""}</div>
+          {r.desc && <div style={{ fontSize: 10, color: T.text2, fontFamily: "monospace", marginTop: 1, lineHeight: 1.3 }}>{r.desc}</div>}
+          {r.note && <div style={{ fontSize: 9, color: "#b45309", marginTop: 2 }}>⚠ {r.note}</div>}
+        </div>
+        <button onClick={e => { e.stopPropagation(); setConfirmId(r.id); setConfirmIsPerm(r._perm); }}
+          style={{ marginLeft: "auto", background: "none", border: "none", color: T.text4, fontSize: 13, cursor: "pointer", padding: "0 2px", lineHeight: 1, flexShrink: 0 }}>×</button>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div style={{ fontSize: 10, letterSpacing: "0.08em", color: T.text4, textTransform: "uppercase", marginBottom: 14 }}>
-        {total} {total === 1 ? "conexión" : "conexiones"}
-      </div>
-
       {/* Stage plot SR / C / SL */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.12em", marginBottom: 6, fontWeight: 700 }}>ESCENARIO</div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.12em", marginBottom: 6, fontWeight: 700, textAlign: "center" }}>ESCENARIO</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
           {POSITIONS.map(pos => {
             const posRulos = byPos(pos);
             return (
-              <div key={pos} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden", minHeight: 80 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 8px", borderBottom: `1px solid ${T.border2}`, background: T.card2 }}>
+              <div key={pos} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden", minHeight: 70 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 8px", borderBottom: `1px solid ${T.border2}`, background: T.card2 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "monospace", color: T.text3, letterSpacing: "0.08em" }}>{pos}</span>
                   <button onClick={() => onAdd(pos)} style={{ background: "none", border: "none", color: T.text4, fontSize: 16, cursor: "pointer", lineHeight: 1, padding: "0 2px" }}>+</button>
                 </div>
                 <div style={{ padding: 6, display: "flex", flexDirection: "column", gap: 5 }}>
-                  {posRulos.length === 0 && (
-                    <div style={{ fontSize: 10, color: T.text4, textAlign: "center", padding: "8px 0" }}>—</div>
-                  )}
-                  {posRulos.map(r => {
-                    const color = ruloColor(r.type);
-                    return (
-                      <div key={r.id} onClick={() => onEdit(r.id)}
-                        style={{ background: dark ? `${color}18` : `${color}0d`, border: `1px solid ${dark ? color + "44" : color + "28"}`, borderRadius: 8, padding: "5px 7px", cursor: "pointer", position: "relative" }}>
-                        {r._perm && <span style={{ position: "absolute", top: 3, right: 4, fontSize: 8 }}>📌</span>}
-                        <div style={{ fontSize: 9, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em", paddingRight: r._perm ? 12 : 0 }}>{r.type || "CABLE"}{r.qty ? ` ×${r.qty}` : ""}</div>
-                        {r.desc && <div style={{ fontSize: 10, color: T.text2, fontFamily: "monospace", marginTop: 2, lineHeight: 1.3 }}>{r.desc}</div>}
-                      </div>
-                    );
-                  })}
+                  {posRulos.length === 0
+                    ? <div style={{ fontSize: 10, color: T.text4, textAlign: "center", padding: "8px 0" }}>—</div>
+                    : posRulos.map(r => <RuloChip key={r.id} r={r} />)
+                  }
                 </div>
               </div>
             );
@@ -1809,14 +1799,12 @@ function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
         </div>
       </div>
 
-      {/* Sin posición */}
+      {/* Sin posición — chips compactos */}
       {noPos.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.12em", marginBottom: 8, fontWeight: 700 }}>SIN POSICIÓN</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {noPos.map(r => (
-              <RuloCard key={r.id} r={r} onEdit={() => onEdit(r.id)} onDelete={() => { setConfirmId(r.id); setConfirmIsPerm(r._perm); }} />
-            ))}
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.12em", marginBottom: 6, fontWeight: 700 }}>GENERAL</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {noPos.map(r => <RuloChip key={r.id} r={r} />)}
           </div>
         </div>
       )}
@@ -1909,22 +1897,20 @@ function RuloFormModal({ initial, prefillPos, onSave, onClose }) {
     type: initial.type || "OPTOCORE",
     qty: initial.qty || "",
     desc: initial.desc || "",
-    from: initial.from || "",
-    to: initial.to || "",
     note: initial.note || "",
     position: initial.position || "",
     permanent: initial.permanent || false,
-  } : { type: "OPTOCORE", qty: "", desc: "", from: "", to: "", note: "", position: prefillPos || "", permanent: false });
+  } : { type: "OPTOCORE", qty: "", desc: "", note: "", position: prefillPos || "", permanent: false });
 
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
 
   function confirm() {
-    if (!f.desc.trim() && !f.from.trim() && !f.to.trim()) return;
+    if (!f.desc.trim() && !f.qty.trim()) return;
     onSave(f);
   }
 
-  const valid = f.desc.trim() || f.from.trim() || f.to.trim();
+  const valid = f.desc.trim() || f.qty.trim();
   const color = ruloColor(f.type);
 
   return (
@@ -1971,16 +1957,6 @@ function RuloFormModal({ initial, prefillPos, onSave, onClose }) {
             <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 6 }}>DESCRIPCIÓN</div>
             <input value={f.desc} onChange={e => set("desc", e.target.value)} placeholder="Ej: HMA OPTOCORE Festival Box" style={S.input} autoFocus />
           </div>
-        </div>
-
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 6 }}>DE (origen)</div>
-          <input value={f.from} onChange={e => set("from", e.target.value)} placeholder="Ej: Festival Box (centro)" style={S.input} />
-        </div>
-
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.1em", marginBottom: 6 }}>PARA (destino)</div>
-          <input value={f.to} onChange={e => set("to", e.target.value)} placeholder="Ej: FOH Principal" style={S.input} />
         </div>
 
         <div style={{ marginBottom: 14 }}>
