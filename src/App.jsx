@@ -1786,7 +1786,6 @@ function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
           <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{r.type || "CABLE"}{r.qty ? ` ×${r.qty}` : ""}</span>
         </div>
         {r.desc && <div style={{ fontSize: 12, color: T.text2, fontFamily: "monospace", lineHeight: 1.3 }}>{r.desc}</div>}
-        {r.note && <div style={{ fontSize: 10, color: "#b45309", marginTop: 3 }}>⚠ {r.note}</div>}
       </div>
     );
   }
