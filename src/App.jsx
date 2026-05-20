@@ -1748,6 +1748,7 @@ function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
   const [confirmId, setConfirmId] = useState(null);
   const [confirmIsPerm, setConfirmIsPerm] = useState(false);
+  const [menuId, setMenuId] = useState(null);
 
   const allRulos = [
     ...permRulos.map(r => ({ ...r, _perm: true })),
@@ -1758,23 +1759,33 @@ function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
 
   function RuloChip({ r }) {
     const color = ruloColor(r.type);
+    const isOpen = menuId === r.id;
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 4, background: dark ? `${color}18` : `${color}0d`, border: `1px solid ${dark ? color + "44" : color + "28"}`, borderRadius: 8, padding: "5px 7px", cursor: "pointer", position: "relative" }}
-        onClick={() => onEdit(r.id)}>
-        {r._perm && <span style={{ fontSize: 8, lineHeight: 1 }}>📌</span>}
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{r.type || "CABLE"}{r.qty ? ` ×${r.qty}` : ""}</div>
-          {r.desc && <div style={{ fontSize: 10, color: T.text2, fontFamily: "monospace", marginTop: 1, lineHeight: 1.3 }}>{r.desc}</div>}
-          {r.note && <div style={{ fontSize: 9, color: "#b45309", marginTop: 2 }}>⚠ {r.note}</div>}
+      <div style={{ position: "relative" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, background: isOpen ? (dark ? `${color}30` : `${color}18`) : (dark ? `${color}18` : `${color}0d`), border: `1px solid ${dark ? color + "66" : color + "28"}`, borderRadius: 8, padding: "5px 7px", cursor: "pointer" }}
+          onClick={() => setMenuId(isOpen ? null : r.id)}>
+          {r._perm && <span style={{ fontSize: 8, lineHeight: 1 }}>📌</span>}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{r.type || "CABLE"}{r.qty ? ` ×${r.qty}` : ""}</div>
+            {r.desc && <div style={{ fontSize: 10, color: T.text2, fontFamily: "monospace", marginTop: 1, lineHeight: 1.3 }}>{r.desc}</div>}
+            {r.note && <div style={{ fontSize: 9, color: "#b45309", marginTop: 2 }}>⚠ {r.note}</div>}
+          </div>
+          <span style={{ fontSize: 10, color, opacity: 0.6, flexShrink: 0 }}>{isOpen ? "▲" : "▼"}</span>
         </div>
-        <button onClick={e => { e.stopPropagation(); setConfirmId(r.id); setConfirmIsPerm(r._perm); }}
-          style={{ marginLeft: "auto", background: "none", border: "none", color: T.text4, fontSize: 13, cursor: "pointer", padding: "0 2px", lineHeight: 1, flexShrink: 0 }}>×</button>
+        {isOpen && (
+          <div style={{ display: "flex", gap: 4, marginTop: 3 }}>
+            <button onClick={() => { setMenuId(null); onEdit(r.id); }}
+              style={{ flex: 1, padding: "6px", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 11, color: T.text2, cursor: "pointer", fontFamily: "monospace" }}>✏️ Editar</button>
+            <button onClick={() => { setMenuId(null); setConfirmId(r.id); setConfirmIsPerm(r._perm); }}
+              style={{ flex: 1, padding: "6px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, fontSize: 11, color: "#ef4444", cursor: "pointer", fontFamily: "monospace" }}>🗑 Borrar</button>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div>
+    <div onClick={() => menuId && setMenuId(null)}>
       {/* Stage plot SR / C / SL */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.12em", marginBottom: 6, fontWeight: 700, textAlign: "center" }}>ESCENARIO</div>
