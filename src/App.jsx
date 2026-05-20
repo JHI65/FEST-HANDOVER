@@ -1819,7 +1819,6 @@ function RulosView({ rulos, permRulos, onAdd, onEdit, onDelete }) {
         </div>
       )}
 
-      <button onClick={() => onAdd(null)} style={{ ...S.addBtn, marginTop: 6 }}>+ Añadir conexión</button>
 
       {/* detail sheet */}
       {sheetRulo && (() => {
