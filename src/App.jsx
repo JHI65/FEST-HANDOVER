@@ -190,8 +190,9 @@ function LoginScreen() {
   async function loginWithGoogle() {
     setLoading(true);
     setError(null);
-    const festParam = new URLSearchParams(window.location.search).get("fest");
-    const redirectTo = window.location.origin + "/FEST-HANDOVER/" + (festParam ? `?fest=${festParam}` : "");
+    const sp = new URLSearchParams(window.location.search);
+    const joinParam = sp.get("join") || sp.get("fest");
+    const redirectTo = window.location.origin + "/FEST-HANDOVER/" + (joinParam ? `?join=${encodeURIComponent(joinParam)}` : "");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
@@ -258,10 +259,12 @@ function Main({ session }) {
   useEffect(() => {
     (async () => {
       try {
-      // Check URL for shared festival (puede venir en search o en hash)
+      // Check URL for shared festival
       const searchParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#\??/, ""));
-      const shared = searchParams.get("fest") || hashParams.get("fest");
+      // ?join=<id> (new short format) or legacy ?fest=<base64>
+      const joinId = searchParams.get("join") || hashParams.get("join");
+      const legacyFest = searchParams.get("fest") || hashParams.get("fest");
 
       let f = await loadFests(userId);
 
@@ -277,11 +280,17 @@ function Main({ session }) {
         f = await loadFests(userId);
       }
 
-      if (shared) {
+      if (joinId) {
+        // New short format: ?join=<festId>
+        const ok = await joinFestAsMember(joinId);
+        if (ok) f = await loadFests(userId);
+        else console.error("No se pudo unir al festival compartido");
+        window.history.replaceState({}, "", window.location.pathname);
+      } else if (legacyFest) {
+        // Legacy format: ?fest=<base64 JSON>
         try {
-          const imported = JSON.parse(decodeURIComponent(escape(atob(shared))));
+          const imported = JSON.parse(decodeURIComponent(escape(atob(legacyFest))));
           if (imported && imported.id) {
-            // Unirse como miembro al festival original (sincronización real)
             const ok = await joinFestAsMember(imported.id);
             if (ok) f = await loadFests(userId);
             else console.error("No se pudo unir al festival compartido");
@@ -1511,8 +1520,7 @@ function LogModal({ log, festName, onClose }) {
 }
 
 function ShareModal({ fest, onClose }) {
-  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(fest))));
-  const url = `${window.location.origin}/FEST-HANDOVER/?fest=${encoded}`;
+  const url = `${window.location.origin}/FEST-HANDOVER/?join=${fest.id}`;
   const [copied, setCopied] = useState(false);
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
 
