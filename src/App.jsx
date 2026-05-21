@@ -976,14 +976,16 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
     const newDays = stage.days.map((d, i) => i === dayIdx ? { ...d, rulos: newDayRulos } : d);
     const newStages = (fest.stages || []).map(s => s.id === stage.id ? { ...s, days: newDays, rulos: newPermRulos } : s);
     const action = editRuloId ? "EDIT_RULO" : "ADD_RULO";
-    onEditFest(withLog({ ...fest, stages: newStages }, mkLog(userEmail, action, fields.pos || "")));
+    const ruloDetail = [fields.position, fields.type, fields.qty && fields.desc ? `${fields.qty}× ${fields.desc}` : (fields.desc || fields.qty), fields.permanent ? "PERMANENTE" : day.label].filter(Boolean).join(" · ");
+    onEditFest(withLog({ ...fest, stages: newStages }, mkLog(userEmail, action, ruloDetail)));
     setShowRuloForm(false);
     setEditRuloId(null);
     setPrefillPos(null);
   }
 
   function deleteRulo(id, isPerm) {
-    const ruloPos = [...(day.rulos || []), ...(stage.rulos || [])].find(r => r.id === id)?.pos || id;
+    const ruloObj = [...(day.rulos || []), ...(stage.rulos || [])].find(r => r.id === id);
+    const ruloPos = ruloObj ? [ruloObj.position, ruloObj.type, ruloObj.desc].filter(Boolean).join(" · ") : id;
     let newDayRulos = (day.rulos || []).filter(r => r.id !== id);
     let newPermRulos = (stage.rulos || []).filter(r => r.id !== id);
     const newDays = stage.days.map((d, i) => i === dayIdx ? { ...d, rulos: newDayRulos } : d);
@@ -1015,16 +1017,23 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
   async function addArtistToDay(fields) {
     const newArt = { id: uid(), artist: fields.artist || "", console: fields.console || "", connection: fields.connection || "", signal: fields.signal || "", preset: fields.preset || "INITIAL", presetOk: false, toLx: fields.toLx || "", toMon: fields.toMon || "", tecnico: fields.tecnico || "", comments: [], extraSlots: [] };
     const updatedDays = stage.days.map((d, i) => i === dayIdx ? { ...d, artists: [...d.artists, newArt] } : d);
-    await onEditFest(withLog(updateStage(updatedDays), mkLog(userEmail, "ADD_ARTIST", newArt.artist)));
+    const addDetail = [newArt.artist, newArt.console, newArt.connection, newArt.signal].filter(Boolean).join(" · ");
+    await onEditFest(withLog(updateStage(updatedDays), mkLog(userEmail, "ADD_ARTIST", addDetail)));
     setShowAdd(false);
     setSelectedId(newArt.id);
   }
 
   async function saveEditArtist(fields) {
+    const LABELS = { artist: "nombre", console: "mesa", connection: "conexión", signal: "señal", preset: "preset", tecnico: "técnico", toLx: "LX", toMon: "Mon" };
+    const orig = artists.find(a => a.id === editId);
+    const changes = Object.keys(LABELS)
+      .filter(k => fields[k] !== undefined && String(fields[k] || "") !== String(orig?.[k] || ""))
+      .map(k => `${LABELS[k]}: "${orig?.[k] || "—"}" → "${fields[k] || "—"}"`);
+    const editDetail = (fields.artist || orig?.artist || "") + (changes.length ? `\n  ${changes.join("\n  ")}` : " · sin cambios");
     const updatedDays = stage.days.map((d, i) => i === dayIdx ? {
       ...d, artists: d.artists.map(a => a.id === editId ? { ...a, ...fields } : a)
     } : d);
-    await onEditFest(withLog(updateStage(updatedDays), mkLog(userEmail, "EDIT_ARTIST", fields.artist || editId)));
+    await onEditFest(withLog(updateStage(updatedDays), mkLog(userEmail, "EDIT_ARTIST", editDetail)));
     setEditId(null);
   }
 
@@ -1447,58 +1456,54 @@ function AddArtistScreen({ onAdd, onBack, initial }) {
 /* ---------- log modal ---------- */
 function LogModal({ log, festName, onClose }) {
   const entries = [...(log || [])].reverse();
+  const { dark } = useTheme(); const T = dark ? DK : LT;
   const fmtTs = (iso) => {
     try {
       const d = new Date(iso);
       return d.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " " + d.toLocaleDateString("es", { day: "2-digit", month: "2-digit" });
     } catch { return iso; }
   };
-  const actionColor = (a) => {
-    if (a.startsWith("ADD")) return "#4ade80";
-    if (a.startsWith("DEL")) return "#f87171";
-    if (a.startsWith("EDIT")) return "#facc15";
-    return "#a3e635";
+  const actionMeta = (a) => {
+    if (a.startsWith("ADD")) return { label: a, color: "#16a34a" };
+    if (a.startsWith("DEL")) return { label: a, color: "#dc2626" };
+    if (a.startsWith("EDIT")) return { label: a, color: "#d97706" };
+    return { label: a, color: T.text3 };
   };
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 600, maxHeight: "85dvh", background: "#0a0a0a", borderRadius: "16px 16px 0 0", display: "flex", flexDirection: "column", overflow: "hidden", border: "1px solid #1e3a1e", borderBottom: "none" }}>
-        {/* terminal title bar */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", background: "#111", borderBottom: "1px solid #1e3a1e", flexShrink: 0 }}>
-          <div style={{ display: "flex", gap: 6 }}>
-            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
-            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
-            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840" }} />
-          </div>
-          <div style={{ fontFamily: "monospace", fontSize: 11, color: "#4ade80", letterSpacing: "0.08em" }}>
-            FEST-LOG — {festName}
-          </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#4ade80", fontFamily: "monospace", fontSize: 14, cursor: "pointer" }}>✕</button>
-        </div>
-        {/* prompt header */}
-        <div style={{ padding: "8px 16px 4px", background: "#0a0a0a", flexShrink: 0 }}>
-          <span style={{ fontFamily: "monospace", fontSize: 11, color: "#4ade80" }}>$ cat changelog.log</span>
-          <span style={{ fontFamily: "monospace", fontSize: 11, color: "#4ade80", marginLeft: 8, animation: "blink 1s step-end infinite" }}>▌</span>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 600, maxHeight: "85dvh", background: T.card, borderRadius: "16px 16px 0 0", display: "flex", flexDirection: "column", overflow: "hidden", border: `1px solid ${T.border}`, borderBottom: "none" }}>
+        {/* header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: T.card2, borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+          <span style={{ fontFamily: "monospace", fontSize: 12, color: T.text3, letterSpacing: "0.06em" }}>{">_"} CHANGELOG</span>
+          <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: T.text, letterSpacing: "0.08em" }}>{festName}</span>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: T.text3, fontSize: 16, cursor: "pointer", lineHeight: 1 }}>✕</button>
         </div>
         {/* log entries */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "4px 16px 20px", background: "#0a0a0a" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "6px 0 20px", background: T.bg }}>
           {entries.length === 0 ? (
-            <div style={{ fontFamily: "monospace", fontSize: 11, color: "#334155", padding: "16px 0" }}>// no hay entradas en el log</div>
+            <div style={{ fontFamily: "monospace", fontSize: 11, color: T.text4, padding: "20px 16px" }}>// sin entradas</div>
           ) : (
-            entries.map((e, i) => (
-              <div key={i} style={{ display: "flex", gap: 8, padding: "3px 0", borderBottom: "1px solid #0d1f0d", flexWrap: "wrap" }}>
-                <span style={{ fontFamily: "monospace", fontSize: 10, color: "#166534", flexShrink: 0, whiteSpace: "nowrap" }}>[{fmtTs(e.ts)}]</span>
-                <span style={{ fontFamily: "monospace", fontSize: 10, color: "#22c55e", flexShrink: 0, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.user}</span>
-                <span style={{ fontFamily: "monospace", fontSize: 10, color: "#166534" }}>›</span>
-                <span style={{ fontFamily: "monospace", fontSize: 10, color: actionColor(e.action), flexShrink: 0 }}>{e.action}</span>
-                {e.detail && <span style={{ fontFamily: "monospace", fontSize: 10, color: "#86efac" }}>· {e.detail}</span>}
-              </div>
-            ))
+            entries.map((e, i) => {
+              const { label, color } = actionMeta(e.action);
+              return (
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: "0 10px", padding: "5px 16px", borderBottom: `1px solid ${T.border2}`, alignItems: "start" }}>
+                  <span style={{ fontFamily: "monospace", fontSize: 10, color: T.text4, whiteSpace: "nowrap", paddingTop: 1 }}>{fmtTs(e.ts)}</span>
+                  <span style={{ fontFamily: "monospace", fontSize: 10, color, fontWeight: 700, whiteSpace: "nowrap", paddingTop: 1 }}>{label}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <span style={{ fontFamily: "monospace", fontSize: 10, color: T.text2, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.user}</span>
+                    {e.detail && e.detail.split("\n").map((line, li) => (
+                      <span key={li} style={{ fontFamily: "monospace", fontSize: 10, color: T.text3, display: "block", lineHeight: 1.6 }}>{line}</span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
         {/* footer */}
-        <div style={{ padding: "8px 16px", background: "#0d1a0d", borderTop: "1px solid #1e3a1e", flexShrink: 0 }}>
-          <span style={{ fontFamily: "monospace", fontSize: 10, color: "#166534" }}>{entries.length} entradas · últimos 1000 cambios</span>
+        <div style={{ padding: "8px 16px", background: T.card2, borderTop: `1px solid ${T.border}`, flexShrink: 0 }}>
+          <span style={{ fontFamily: "monospace", fontSize: 10, color: T.text4 }}>{entries.length} entradas · últimos 1000 cambios</span>
         </div>
       </div>
     </div>
