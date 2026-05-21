@@ -1804,11 +1804,11 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
 }
 
 /* ---------- rulos ---------- */
-const RULO_TYPES = ["OPTOCORE", "RJ / CAT6", "FIBRA", "OPTICALCON", "MULTIPAR", "ETHERNET", "OTRO"];
+const RULO_TYPES = ["HMA OPTOCORE", "RJ / CAT6", "OPTICALCON", "MULTIPAR", "OTRO"];
 
 function ruloColor(type) {
   const t = (type || "").toUpperCase();
-  if (t.includes("OPTOCORE") || t.includes("FIBRA")) return "#16a34a";
+  if (t.includes("OPTOCORE")) return "#16a34a";
   if (t.includes("RJ") || t.includes("CAT")) return "#7c3aed";
   if (t.includes("OPTICAL")) return "#2563eb";
   if (t.includes("MULTIPAR")) return "#ea580c";
@@ -1993,13 +1993,13 @@ function RuloCard({ r, onEdit, onDelete }) {
 function RuloFormModal({ initial, prefillPos, onSave, onClose }) {
   const isEdit = !!initial;
   const [f, setF] = useState(initial ? {
-    type: initial.type || "OPTOCORE",
+    type: initial.type || "HMA OPTOCORE",
     qty: initial.qty || "",
     desc: initial.desc || "",
     note: initial.note || "",
     position: initial.position || "",
     permanent: initial.permanent || false,
-  } : { type: "OPTOCORE", qty: "", desc: "", note: "", position: prefillPos || "", permanent: false });
+  } : { type: "HMA OPTOCORE", qty: "", desc: "", note: "", position: prefillPos || "", permanent: false });
 
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
