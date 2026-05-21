@@ -1693,19 +1693,11 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
           <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color: cardText }}>
             {noInfo(a.connection) || "—"}
           </span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-            <span style={{ display: "block", width: 8, height: 1, background: textTertiary, opacity: 0.4, borderRadius: 1 }} />
-            <span style={{ display: "block", width: 3, height: 3, borderRadius: "50%", background: textTertiary, opacity: 0.4 }} />
-            <span style={{ display: "block", width: 8, height: 1, background: textTertiary, opacity: 0.4, borderRadius: 1 }} />
-          </span>
+          <span style={{ color: textTertiary, opacity: 0.5, fontSize: 12 }}>·</span>
           <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color }}>
             {noInfo(a.signal) || "—"}
           </span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-            <span style={{ display: "block", width: 8, height: 1, background: textTertiary, opacity: 0.4, borderRadius: 1 }} />
-            <span style={{ display: "block", width: 3, height: 3, borderRadius: "50%", background: textTertiary, opacity: 0.4 }} />
-            <span style={{ display: "block", width: 8, height: 1, background: textTertiary, opacity: 0.4, borderRadius: 1 }} />
-          </span>
+          <span style={{ color: textTertiary, opacity: 0.5, fontSize: 12 }}>·</span>
           <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color: cardText }}>
             {noInfo(a.console) || "—"}
           </span>
