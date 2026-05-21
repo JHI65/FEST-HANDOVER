@@ -1073,8 +1073,8 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
                 flexShrink: 0, padding: "5px 12px", borderRadius: 20, fontSize: 12,
                 fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
                 whiteSpace: "nowrap", border: "none",
-                background: active ? "#0f172a" : "#f1f5f9",
-                color: active ? "#fff" : "#64748b",
+                background: active ? (dark ? "#334155" : "#0f172a") : (dark ? "#1e293b" : "#f1f5f9"),
+                color: active ? "#fff" : T.text4,
               }}>
                 {d.label} <span style={{ opacity: 0.6, fontSize: 10 }}>{dn}/{d.artists.length}</span>
               </button>
