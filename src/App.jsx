@@ -30,12 +30,12 @@ const SEED = [{
 function normalizeFest(f) {
   // Nuevo formato: days es { _stages: [...] }
   if (f.days && !Array.isArray(f.days) && Array.isArray(f.days._stages)) {
-    return { ...f, stages: f.days._stages };
+    return { ...f, stages: f.days._stages, log: f.days._log || [] };
   }
   // Ya tiene stages (en memoria, tras normalizar)
-  if (Array.isArray(f.stages)) return f;
+  if (Array.isArray(f.stages)) return { ...f, log: f.log || [] };
   // Legacy: days es array → migrar a un stage por defecto
-  return { ...f, stages: [{ id: "stage_default", name: "ESCENARIO PRINCIPAL", days: Array.isArray(f.days) ? f.days : [] }] };
+  return { ...f, stages: [{ id: "stage_default", name: "ESCENARIO PRINCIPAL", days: Array.isArray(f.days) ? f.days : [] }], log: [] };
 }
 
 /* ---------- theme ---------- */
@@ -56,6 +56,12 @@ function sigColor(s) {
 }
 const uid = () => Math.random().toString(36).slice(2, 9);
 const noInfo = v => v === "?" ? "NO INFO" : v;
+function mkLog(userEmail, action, detail) {
+  return { ts: new Date().toISOString(), user: userEmail || "?", action, detail: detail || "" };
+}
+function withLog(fest, entry) {
+  return { ...fest, log: [...(fest.log || []).slice(-999), entry] };
+}
 
 /* ---------- Supabase storage ---------- */
 async function loadFests(userId) {
@@ -69,7 +75,7 @@ async function loadFests(userId) {
 
 function festToDB(fest) {
   // Serializa stages en el campo days del schema existente
-  return { _stages: fest.stages || [] };
+  return { _stages: fest.stages || [], _log: fest.log || [] };
 }
 
 async function insertFest(userId, fest) {
@@ -411,6 +417,7 @@ function Main({ session }) {
         {screen === "stages" && fest && (
           <StageView
             fest={fest}
+            userEmail={session.user.email}
             onBack={() => setScreen("home")}
             onEditFest={updateFest}
             onOpenStage={(sid) => { setStageId(sid); setDayIdx(0); setScreen("view"); }}
@@ -426,6 +433,7 @@ function Main({ session }) {
           <FestView
             fest={fest}
             stage={stage}
+            userEmail={session.user.email}
             dayIdx={dayIdx} setDayIdx={setDayIdx}
             notes={notes} setNotes={updateNotes}
             checks={checks} toggleCheck={toggleCheck}
@@ -771,7 +779,7 @@ function Builder({ onCancel, onSave }) {
 }
 
 /* ---------- stage view ---------- */
-function StageView({ fest, onBack, onEditFest, onOpenStage }) {
+function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [selectedStage, setSelectedStage] = useState(null);
@@ -783,14 +791,16 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
 
   function addStage() {
     if (!newName.trim()) return;
-    const newStage = { id: uid(), name: newName.trim().toUpperCase(), days: [{ id: uid(), label: "DÍA 1", artists: [] }] };
-    onEditFest({ ...fest, stages: [...(fest.stages || []), newStage] });
+    const stageName = newName.trim().toUpperCase();
+    const newStage = { id: uid(), name: stageName, days: [{ id: uid(), label: "DÍA 1", artists: [] }] };
+    onEditFest(withLog({ ...fest, stages: [...(fest.stages || []), newStage] }, mkLog(userEmail, "ADD_STAGE", stageName)));
     setNewName("");
     setShowAdd(false);
   }
 
   function deleteStage(sid) {
-    onEditFest({ ...fest, stages: (fest.stages || []).filter(s => s.id !== sid) });
+    const stageName = (fest.stages || []).find(s => s.id === sid)?.name || sid;
+    onEditFest(withLog({ ...fest, stages: (fest.stages || []).filter(s => s.id !== sid) }, mkLog(userEmail, "DEL_STAGE", stageName)));
     if (selectedStage === sid) setSelectedStage(null);
   }
 
@@ -906,10 +916,11 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
 }
 
 /* ---------- fest view ---------- */
-function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, toggleCheck, slots, setSlots, onEditFest, onBack, onRefresh, lastSync }) {
+function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, checks, toggleCheck, slots, setSlots, onEditFest, onBack, onRefresh, lastSync }) {
   const [selectedId, setSelectedId] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [showLog, setShowLog] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [artGearOpen, setArtGearOpen] = useState(false);
   const [confirmDeleteArt, setConfirmDeleteArt] = useState(false);
@@ -954,7 +965,6 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
   }
 
   function saveRulo(fields) {
-    // remove from both lists first, then add to the right one — single update
     let newDayRulos = (day.rulos || []).filter(r => r.id !== editRuloId);
     let newPermRulos = (stage.rulos || []).filter(r => r.id !== editRuloId);
     const id = editRuloId || uid();
@@ -965,23 +975,25 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
     }
     const newDays = stage.days.map((d, i) => i === dayIdx ? { ...d, rulos: newDayRulos } : d);
     const newStages = (fest.stages || []).map(s => s.id === stage.id ? { ...s, days: newDays, rulos: newPermRulos } : s);
-    onEditFest({ ...fest, stages: newStages });
+    const action = editRuloId ? "EDIT_RULO" : "ADD_RULO";
+    onEditFest(withLog({ ...fest, stages: newStages }, mkLog(userEmail, action, fields.pos || "")));
     setShowRuloForm(false);
     setEditRuloId(null);
     setPrefillPos(null);
   }
 
   function deleteRulo(id, isPerm) {
+    const ruloPos = [...(day.rulos || []), ...(stage.rulos || [])].find(r => r.id === id)?.pos || id;
     let newDayRulos = (day.rulos || []).filter(r => r.id !== id);
     let newPermRulos = (stage.rulos || []).filter(r => r.id !== id);
     const newDays = stage.days.map((d, i) => i === dayIdx ? { ...d, rulos: newDayRulos } : d);
     const newStages = (fest.stages || []).map(s => s.id === stage.id ? { ...s, days: newDays, rulos: newPermRulos } : s);
-    onEditFest({ ...fest, stages: newStages });
+    onEditFest(withLog({ ...fest, stages: newStages }, mkLog(userEmail, "DEL_RULO", ruloPos)));
   }
 
   function addDay() {
     const newDay = { id: uid(), label: `DÍA ${stage.days.length + 1}`, artists: [] };
-    onEditFest(updateStage([...stage.days, newDay]));
+    onEditFest(withLog(updateStage([...stage.days, newDay]), mkLog(userEmail, "ADD_DAY", newDay.label)));
     setDayIdx(stage.days.length);
     setSelectedId(null);
   }
@@ -1003,7 +1015,7 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
   async function addArtistToDay(fields) {
     const newArt = { id: uid(), artist: fields.artist || "", console: fields.console || "", connection: fields.connection || "", signal: fields.signal || "", preset: fields.preset || "INITIAL", presetOk: false, toLx: fields.toLx || "", toMon: fields.toMon || "", tecnico: fields.tecnico || "", comments: [], extraSlots: [] };
     const updatedDays = stage.days.map((d, i) => i === dayIdx ? { ...d, artists: [...d.artists, newArt] } : d);
-    await onEditFest(updateStage(updatedDays));
+    await onEditFest(withLog(updateStage(updatedDays), mkLog(userEmail, "ADD_ARTIST", newArt.artist)));
     setShowAdd(false);
     setSelectedId(newArt.id);
   }
@@ -1012,13 +1024,14 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
     const updatedDays = stage.days.map((d, i) => i === dayIdx ? {
       ...d, artists: d.artists.map(a => a.id === editId ? { ...a, ...fields } : a)
     } : d);
-    await onEditFest(updateStage(updatedDays));
+    await onEditFest(withLog(updateStage(updatedDays), mkLog(userEmail, "EDIT_ARTIST", fields.artist || editId)));
     setEditId(null);
   }
 
   async function deleteArtist(artId) {
+    const artName = artists.find(a => a.id === artId)?.artist || artId;
     const updatedDays = stage.days.map((d, i) => i === dayIdx ? { ...d, artists: d.artists.filter(a => a.id !== artId) } : d);
-    await onEditFest(updateStage(updatedDays));
+    await onEditFest(withLog(updateStage(updatedDays), mkLog(userEmail, "DEL_ARTIST", artName)));
   }
 
   function addNote(text) {
@@ -1042,6 +1055,7 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
       <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
         <button onClick={onBackBtn} style={S.backBtn}>‹</button>
         <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.06em" }}>{stage.name}</div>
+        <button onClick={() => setShowLog(true)} style={{ ...S.syncBtn, fontFamily: "monospace", fontSize: 13, letterSpacing: 0 }}>{">_"}</button>
       </div>
       {/* BANDAS / RULOS tab switcher + sync */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", paddingBottom: 2 }}>
@@ -1384,6 +1398,7 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
           onClose={() => { setShowRuloForm(false); setEditRuloId(null); setPrefillPos(null); }}
         />
       )}
+      {showLog && <LogModal log={fest.log || []} festName={fest.name} onClose={() => setShowLog(false)} />}
     </div>
   );
 }
@@ -1424,6 +1439,67 @@ function AddArtistScreen({ onAdd, onBack, initial }) {
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={confirm} disabled={!f.artist.trim()} style={{ ...S.bigBtn, flex: 1, padding: "13px", marginTop: 0, opacity: f.artist.trim() ? 1 : 0.4 }}>{isEdit ? "Guardar cambios" : "Guardar artista"}</button>
         <button onClick={onBack} style={{ ...S.navBtn, flex: 0.5 }}>‹ Volver</button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- log modal ---------- */
+function LogModal({ log, festName, onClose }) {
+  const entries = [...(log || [])].reverse();
+  const fmtTs = (iso) => {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " " + d.toLocaleDateString("es", { day: "2-digit", month: "2-digit" });
+    } catch { return iso; }
+  };
+  const actionColor = (a) => {
+    if (a.startsWith("ADD")) return "#4ade80";
+    if (a.startsWith("DEL")) return "#f87171";
+    if (a.startsWith("EDIT")) return "#facc15";
+    return "#a3e635";
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 600, maxHeight: "85dvh", background: "#0a0a0a", borderRadius: "16px 16px 0 0", display: "flex", flexDirection: "column", overflow: "hidden", border: "1px solid #1e3a1e", borderBottom: "none" }}>
+        {/* terminal title bar */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", background: "#111", borderBottom: "1px solid #1e3a1e", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 6 }}>
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840" }} />
+          </div>
+          <div style={{ fontFamily: "monospace", fontSize: 11, color: "#4ade80", letterSpacing: "0.08em" }}>
+            FEST-LOG — {festName}
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#4ade80", fontFamily: "monospace", fontSize: 14, cursor: "pointer" }}>✕</button>
+        </div>
+        {/* prompt header */}
+        <div style={{ padding: "8px 16px 4px", background: "#0a0a0a", flexShrink: 0 }}>
+          <span style={{ fontFamily: "monospace", fontSize: 11, color: "#4ade80" }}>$ cat changelog.log</span>
+          <span style={{ fontFamily: "monospace", fontSize: 11, color: "#4ade80", marginLeft: 8, animation: "blink 1s step-end infinite" }}>▌</span>
+        </div>
+        {/* log entries */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "4px 16px 20px", background: "#0a0a0a" }}>
+          {entries.length === 0 ? (
+            <div style={{ fontFamily: "monospace", fontSize: 11, color: "#334155", padding: "16px 0" }}>// no hay entradas en el log</div>
+          ) : (
+            entries.map((e, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, padding: "3px 0", borderBottom: "1px solid #0d1f0d", flexWrap: "wrap" }}>
+                <span style={{ fontFamily: "monospace", fontSize: 10, color: "#166534", flexShrink: 0, whiteSpace: "nowrap" }}>[{fmtTs(e.ts)}]</span>
+                <span style={{ fontFamily: "monospace", fontSize: 10, color: "#22c55e", flexShrink: 0, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.user}</span>
+                <span style={{ fontFamily: "monospace", fontSize: 10, color: "#166534" }}>›</span>
+                <span style={{ fontFamily: "monospace", fontSize: 10, color: actionColor(e.action), flexShrink: 0 }}>{e.action}</span>
+                {e.detail && <span style={{ fontFamily: "monospace", fontSize: 10, color: "#86efac" }}>· {e.detail}</span>}
+              </div>
+            ))
+          )}
+        </div>
+        {/* footer */}
+        <div style={{ padding: "8px 16px", background: "#0d1a0d", borderTop: "1px solid #1e3a1e", flexShrink: 0 }}>
+          <span style={{ fontFamily: "monospace", fontSize: 10, color: "#166534" }}>{entries.length} entradas · últimos 1000 cambios</span>
+        </div>
       </div>
     </div>
   );
