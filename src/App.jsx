@@ -907,7 +907,6 @@ function StageView({ fest, onBack, onEditFest, onOpenStage }) {
 
 /* ---------- fest view ---------- */
 function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, toggleCheck, slots, setSlots, onEditFest, onBack, onRefresh, lastSync }) {
-  const [showShare, setShowShare] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -1043,9 +1042,6 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
       <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
         <button onClick={onBackBtn} style={S.backBtn}>‹</button>
         <div style={{ flex: 1, textAlign: "center", fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.06em" }}>{stage.name}</div>
-        <button onClick={() => setShowShare(true)} style={S.syncBtn}>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="currentColor" strokeWidth="2"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="currentColor" strokeWidth="2"/></svg>
-        </button>
       </div>
       {/* BANDAS / RULOS tab switcher + sync */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", paddingBottom: 2 }}>
@@ -1098,7 +1094,7 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
         <div style={{ flex: 1, padding: "12px 14px 24px", background: "#f8fafc", overflowY: "auto" }}>
           <AddArtistScreen initial={editArt} onAdd={saveEditArtist} onBack={() => setEditId(null)} />
         </div>
-        {showShare && <ShareModal fest={fest} onClose={() => setShowShare(false)} />}
+
       </div>
     );
   }
@@ -1110,7 +1106,6 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
       <div style={{ flex: 1, padding: "12px 14px 24px", background: "#f8fafc", overflowY: "auto" }}>
         <AddArtistScreen onAdd={addArtistToDay} onBack={() => setShowAdd(false)} />
       </div>
-      {showShare && <ShareModal fest={fest} onClose={() => setShowShare(false)} />}
     </div>
   );
 
@@ -1267,7 +1262,6 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
           <FohNotes notes={myNotes} onAdd={addNote} onDel={delNote} />
         </div>
       </div>
-      {showShare && <ShareModal fest={fest} onClose={() => setShowShare(false)} />}
       {/* cierre menú gear al tocar fuera */}
       {artGearOpen && <div onClick={() => setArtGearOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 20 }} />}
       {/* popup confirmar borrado artista */}
@@ -1336,7 +1330,6 @@ function FestView({ fest, stage, dayIdx, setDayIdx, notes, setNotes, checks, tog
           </div>
         </div>
       )}
-      {showShare && <ShareModal fest={fest} onClose={() => setShowShare(false)} />}
 
       {showCopy && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
