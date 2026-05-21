@@ -1766,10 +1766,6 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
           <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color }}>
             {noInfo(a.signal) || "—"}
           </span>
-          <span style={{ color: textTertiary, opacity: 0.5, fontSize: 12 }}>·</span>
-          <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color: cardText }}>
-            {noInfo(a.console) || "—"}
-          </span>
           {a.preset && (
             <span style={{
               marginLeft: "auto", fontSize: 11, fontWeight: 500, fontFamily: "monospace",
