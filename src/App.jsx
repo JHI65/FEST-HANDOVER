@@ -1024,7 +1024,7 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
   const sc = art ? sigColor(art.signal) : "#64748b";
 
   async function addArtistToDay(fields) {
-    const newArt = { id: uid(), artist: fields.artist || "", console: fields.console || "", connection: fields.connection || "", signal: fields.signal || "", preset: fields.preset || "INITIAL", presetOk: false, toLx: fields.toLx || "", toMon: fields.toMon || "", tecnico: fields.tecnico || "", comments: [], extraSlots: [] };
+    const newArt = { id: uid(), artist: fields.artist || "", console: fields.console || "", connection: fields.connection || "", signal: fields.signal || "", preset: fields.preset || "INITIAL", presetOk: false, toLx: fields.toLx || "", toMon: fields.toMon || "", tecnico: fields.tecnico || "", corriente: fields.corriente || "", comments: [], extraSlots: [] };
     const updatedDays = stage.days.map((d, i) => i === dayIdx ? { ...d, artists: [...d.artists, newArt] } : d);
     const addDetail = [newArt.artist, newArt.console, newArt.connection, newArt.signal].filter(Boolean).join(" · ");
     await onEditFest(withLog(updateStage(updatedDays), mkLog(userEmail, "ADD_ARTIST", addDetail)));
@@ -1033,7 +1033,7 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
   }
 
   async function saveEditArtist(fields) {
-    const LABELS = { artist: "nombre", console: "mesa", connection: "conexión", signal: "señal", preset: "preset", tecnico: "técnico", toLx: "LX", toMon: "Mon" };
+    const LABELS = { artist: "nombre", console: "mesa", connection: "conexión", signal: "señal", preset: "preset", tecnico: "técnico", toLx: "LX", toMon: "Mon", corriente: "corriente" };
     const orig = artists.find(a => a.id === editId);
     const changes = Object.keys(LABELS)
       .filter(k => fields[k] !== undefined && String(fields[k] || "") !== String(orig?.[k] || ""))
@@ -1179,7 +1179,6 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 20, fontWeight: 500, color: T.text, lineHeight: 1.2, wordBreak: "break-word" }}>{art.artist || "—"}</div>
-                  <div style={{ fontSize: 12, color: T.text4, marginTop: 4 }}>{day.label} · {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : "—"}</div>
                 </div>
               </div>
               {/* SC + SHOW pills */}
@@ -1261,6 +1260,19 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
               </div>
             </div>
           </div>
+
+          {/* Corriente */}
+          {art.corriente && (
+            <div style={{ borderBottom: `0.5px solid ${T.border}` }}>
+              <div style={{ padding: "10px 16px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 12, color: T.text4 }}>⚡</span>
+                <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.07em", textTransform: "uppercase", color: T.text4 }}>Corriente</span>
+              </div>
+              <div style={{ padding: "0 12px 12px" }}>
+                <div style={{ fontSize: 13, color: T.text, lineHeight: 1.5, padding: "8px 10px", background: T.card2, borderRadius: 8, whiteSpace: "pre-wrap" }}>{art.corriente}</div>
+              </div>
+            </div>
+          )}
 
           {/* TO LX / TO MON */}
           {(art.toLx || art.toMon) && (
@@ -1438,7 +1450,7 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
 
 /* ---------- small components ---------- */
 function AddArtistScreen({ onAdd, onBack, initial }) {
-  const [f, setF] = useState(initial ? { artist: initial.artist || "", console: initial.console || "", connection: initial.connection || "", signal: initial.signal || "", preset: initial.preset || "INITIAL", toLx: initial.toLx || "", toMon: initial.toMon || "", tecnico: initial.tecnico || "" } : { artist: "", console: "", connection: "", signal: "", preset: "INITIAL", toLx: "", toMon: "", tecnico: "" });
+  const [f, setF] = useState(initial ? { artist: initial.artist || "", console: initial.console || "", connection: initial.connection || "", signal: initial.signal || "", preset: initial.preset || "INITIAL", toLx: initial.toLx || "", toMon: initial.toMon || "", tecnico: initial.tecnico || "", corriente: initial.corriente || "" } : { artist: "", console: "", connection: "", signal: "", preset: "INITIAL", toLx: "", toMon: "", tecnico: "", corriente: "" });
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
   const isEdit = !!initial;
 
@@ -1468,7 +1480,8 @@ function AddArtistScreen({ onAdd, onBack, initial }) {
         <input value={f.toMon} onChange={e => set("toMon", e.target.value)} placeholder="TO MON" style={S.input} />
         <input value={f.tecnico || ""} onChange={e => set("tecnico", e.target.value)} placeholder="Técnico" style={S.input} />
       </div>
-      <input value={f.preset} onChange={e => set("preset", e.target.value)} placeholder="Preset" style={{ ...S.input, marginBottom: 14 }} />
+      <input value={f.preset} onChange={e => set("preset", e.target.value)} placeholder="Preset" style={{ ...S.input, marginBottom: 8 }} />
+      <textarea value={f.corriente} onChange={e => set("corriente", e.target.value)} placeholder="Notas de corriente" rows={2} style={{ ...S.input, marginBottom: 14, resize: "vertical", fontFamily: "inherit", fontSize: 13 }} />
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={confirm} disabled={!f.artist.trim()} style={{ ...S.bigBtn, flex: 1, padding: "13px", marginTop: 0, opacity: f.artist.trim() ? 1 : 0.4 }}>{isEdit ? "Guardar cambios" : "Guardar artista"}</button>
         <button onClick={onBack} style={{ ...S.navBtn, flex: 0.5 }}>‹ Volver</button>
