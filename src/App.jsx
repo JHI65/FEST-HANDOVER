@@ -2134,8 +2134,8 @@ function RuloFormModal({ initial, prefillPos, onSave, onClose }) {
 /* ---------- horarios ---------- */
 function HorariosView({ artists, day, onSaveTime }) {
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
-  // editState: { id, section } where section = "sc" | "show"
-  const [editState, setEditState] = useState(null);
+  const [section, setSection] = useState("sc");
+  const [editId, setEditId] = useState(null);
   const [editStart, setEditStart] = useState("");
   const [editEnd, setEditEnd] = useState("");
 
@@ -2146,123 +2146,115 @@ function HorariosView({ artists, day, onSaveTime }) {
   const showBg     = dark ? "#1e1b4b" : "#eef2ff";
   const showBorder = dark ? "#4338ca55" : "#c7d2fe";
 
-  function sortByTime(list, startKey) {
-    return [...list].sort((a, b) => {
-      if (!a[startKey] && !b[startKey]) return 0;
-      if (!a[startKey]) return 1;
-      if (!b[startKey]) return -1;
-      return a[startKey].localeCompare(b[startKey]);
-    });
-  }
+  const isSc     = section === "sc";
+  const color    = isSc ? scColor   : showColor;
+  const bg       = isSc ? scBg      : showBg;
+  const border   = isSc ? scBorder  : showBorder;
+  const startKey = isSc ? "scStart" : "showStart";
+  const endKey   = isSc ? "scEnd"   : "showEnd";
 
-  function openEdit(a, section) {
-    setEditState({ id: a.id, section });
-    if (section === "sc") {
-      setEditStart(a.scStart || "");
-      setEditEnd(a.scEnd || "");
-    } else {
-      setEditStart(a.showStart || "");
-      setEditEnd(a.showEnd || "");
-    }
+  const sorted = [...artists].sort((a, b) => {
+    if (!a[startKey] && !b[startKey]) return 0;
+    if (!a[startKey]) return 1;
+    if (!b[startKey]) return -1;
+    return a[startKey].localeCompare(b[startKey]);
+  });
+
+  function openEdit(a) {
+    setEditId(a.id);
+    setEditStart(a[startKey] || "");
+    setEditEnd(a[endKey] || "");
   }
 
   async function confirmEdit(artId) {
-    const { section } = editState;
-    const fields = section === "sc"
-      ? { scStart: editStart, scEnd: editEnd }
-      : { showStart: editStart, showEnd: editEnd };
-    await onSaveTime(artId, fields);
-    setEditState(null);
+    await onSaveTime(artId, { [startKey]: editStart, [endKey]: editEnd });
+    setEditId(null);
   }
 
-  if (artists.length === 0) return (
-    <div style={{ textAlign: "center", color: T.text4, fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
-  );
-
-  function ArtistRow({ a, section }) {
-    const isEditing = editState?.id === a.id && editState?.section === section;
-    const isSc = section === "sc";
-    const color  = isSc ? scColor  : showColor;
-    const bg     = isSc ? scBg     : showBg;
-    const border = isSc ? scBorder : showBorder;
-    const start  = isSc ? a.scStart  : a.showStart;
-    const end    = isSc ? a.scEnd    : a.showEnd;
-    const hasTime = start || end;
-
-    return (
-      <div style={{
-        background: T.card,
-        border: `1px solid ${isEditing ? border : T.border}`,
-        borderLeft: `3px solid ${hasTime ? color : T.border}`,
-        borderRadius: 12,
-        padding: "12px 14px",
-      }}>
-        {isEditing ? (
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.04em" }}>{a.artist || "—"}</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 5 }}>INICIO</div>
-                <input type="time" value={editStart} onChange={e => setEditStart(e.target.value)} style={{ ...S.input, padding: "10px 12px" }} autoFocus />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 5 }}>FIN</div>
-                <input type="time" value={editEnd} onChange={e => setEditEnd(e.target.value)} style={{ ...S.input, padding: "10px 12px" }} />
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => confirmEdit(a.id)} style={{ flex: 1, padding: "10px", background: color, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "monospace" }}>Guardar</button>
-              <button onClick={() => setEditState(null)} style={{ ...S.smBtn, flex: 0.5 }}>Cancelar</button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={() => openEdit(a, section)}>
-            <div style={{ minWidth: 80, textAlign: "center", background: hasTime ? bg : T.card2, border: `1px solid ${hasTime ? border : T.border}`, borderRadius: 10, padding: "6px 8px" }}>
-              {hasTime ? (
-                <>
-                  <div style={{ fontSize: 14, fontWeight: 700, color, fontFamily: "monospace" }}>{start}</div>
-                  {end && <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>→ {end}</div>}
-                </>
-              ) : (
-                <div style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>+ hora</div>
-              )}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
-              {a.console && <div style={{ fontSize: 11, color: T.text3, marginTop: 2, fontFamily: "monospace" }}>{a.console}</div>}
-            </div>
-            <span style={{ color: T.text4, fontSize: 14, flexShrink: 0 }}>✏️</span>
-          </div>
-        )}
-      </div>
-    );
+  function switchSection(s) {
+    setSection(s);
+    setEditId(null);
   }
-
-  const scSorted   = sortByTime(artists, "scStart");
-  const showSorted = sortByTime(artists, "showStart");
 
   return (
     <div>
-      {/* SOUNDCHECKS */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: scColor, flexShrink: 0 }} />
-        <div style={{ fontSize: 10, fontWeight: 700, color: scColor, letterSpacing: "0.14em" }}>SOUNDCHECKS</div>
-        <div style={{ flex: 1, height: 1, background: scBorder }} />
-        <div style={{ fontSize: 10, color: T.text4 }}>{day.label}</div>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 22 }}>
-        {scSorted.map(a => <ArtistRow key={a.id} a={a} section="sc" />)}
+      {/* toggle SC / SHOW */}
+      <div style={{ display: "flex", gap: 4, background: T.card2, borderRadius: 10, padding: 3, marginBottom: 16, alignSelf: "flex-start", width: "fit-content" }}>
+        {[["sc", "SOUNDCHECK"], ["show", "SHOW"]].map(([key, label]) => {
+          const active = section === key;
+          const ac = key === "sc" ? scColor : showColor;
+          return (
+            <button key={key} onClick={() => switchSection(key)} style={{
+              padding: "5px 14px", borderRadius: 8, fontSize: 11,
+              fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
+              border: "none",
+              background: active ? (dark ? "#334155" : "#0f172a") : "transparent",
+              color: active ? "#fff" : T.text4,
+              transition: "all 0.2s",
+            }}>{label}</button>
+          );
+        })}
       </div>
 
-      {/* SHOWS */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: showColor, flexShrink: 0 }} />
-        <div style={{ fontSize: 10, fontWeight: 700, color: showColor, letterSpacing: "0.14em" }}>SHOWS</div>
-        <div style={{ flex: 1, height: 1, background: showBorder }} />
-        <div style={{ fontSize: 10, color: T.text4 }}>{day.label}</div>
-      </div>
+      {artists.length === 0 && (
+        <div style={{ textAlign: "center", color: T.text4, fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {showSorted.map(a => <ArtistRow key={a.id} a={a} section="show" />)}
+        {sorted.map(a => {
+          const isEditing = editId === a.id;
+          const start = a[startKey];
+          const end   = a[endKey];
+          const hasTime = start || end;
+
+          return (
+            <div key={a.id} style={{
+              background: T.card,
+              border: `1px solid ${isEditing ? border : T.border}`,
+              borderLeft: `3px solid ${hasTime ? color : T.border}`,
+              borderRadius: 12,
+              padding: "12px 14px",
+            }}>
+              {isEditing ? (
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.04em" }}>{a.artist || "—"}</div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 5 }}>INICIO</div>
+                      <input type="time" value={editStart} onChange={e => setEditStart(e.target.value)} style={{ ...S.input, padding: "10px 12px" }} autoFocus />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 5 }}>FIN</div>
+                      <input type="time" value={editEnd} onChange={e => setEditEnd(e.target.value)} style={{ ...S.input, padding: "10px 12px" }} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => confirmEdit(a.id)} style={{ flex: 1, padding: "10px", background: color, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "monospace" }}>Guardar</button>
+                    <button onClick={() => setEditId(null)} style={{ ...S.smBtn, flex: 0.5 }}>Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={() => openEdit(a)}>
+                  <div style={{ minWidth: 80, textAlign: "center", background: hasTime ? bg : T.card2, border: `1px solid ${hasTime ? border : T.border}`, borderRadius: 10, padding: "6px 8px" }}>
+                    {hasTime ? (
+                      <>
+                        <div style={{ fontSize: 14, fontWeight: 700, color, fontFamily: "monospace" }}>{start}</div>
+                        {end && <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>→ {end}</div>}
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>+ hora</div>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
+                    {a.console && <div style={{ fontSize: 11, color: T.text3, marginTop: 2, fontFamily: "monospace" }}>{a.console}</div>}
+                  </div>
+                  <span style={{ color: T.text4, fontSize: 14, flexShrink: 0 }}>✏️</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
