@@ -2241,22 +2241,26 @@ function HorariosView({ artists, day, onSaveTime }) {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={() => openEdit(a)}>
-                  <div style={{ minWidth: 80, textAlign: "center", background: hasTime ? bg : T.card2, border: `1px solid ${hasTime ? border : T.border}`, borderRadius: 10, padding: "6px 8px" }}>
+                <div style={{ cursor: "pointer", textAlign: "center" }} onClick={() => openEdit(a)}>
+                  {/* horario centrado */}
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: hasTime ? bg : T.card2, border: `1px solid ${hasTime ? border : T.border}`, borderRadius: 10, padding: "5px 14px", marginBottom: 8 }}>
                     {hasTime ? (
                       <>
-                        <div style={{ fontSize: 14, fontWeight: 700, color, fontFamily: "monospace" }}>{start}</div>
-                        {end && <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>→ {end}</div>}
+                        <span style={{ fontSize: 18, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{start}</span>
+                        {end && <><span style={{ fontSize: 13, color: T.text4 }}>→</span><span style={{ fontSize: 18, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{end}</span></>}
                       </>
                     ) : (
-                      <div style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>+ hora</div>
+                      <span style={{ fontSize: 12, color: T.text4, fontFamily: "monospace" }}>+ hora</span>
                     )}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
-                    {a.console && <div style={{ fontSize: 11, color: T.text3, marginTop: 2, fontFamily: "monospace" }}>{a.console}</div>}
+                  {/* artista + lápiz */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em" }}>{a.artist || "—"}</div>
+                      {a.console && <div style={{ fontSize: 11, color: T.text3, fontFamily: "monospace" }}>{a.console}</div>}
+                    </div>
+                    <span style={{ color: T.text4, fontSize: 13, flexShrink: 0 }}>✏️</span>
                   </div>
-                  <span style={{ color: T.text4, fontSize: 14, flexShrink: 0 }}>✏️</span>
                 </div>
               )}
             </div>
