@@ -1381,8 +1381,6 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
                 a={a}
                 fest={fest}
                 day={day}
-                checks={checks}
-                toggleCheck={toggleCheck}
                 onSelect={setSelectedId}
               />
             ))}
@@ -1751,11 +1749,7 @@ function FestEditModal({ fest, onSave, onClose }) {
 }
 
 /* ---------- compact artist card (ficha compacta) ---------- */
-function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
-  const k = `${fest.id}__${day.id}__${a.id}`;
-  const scDone = !!checks[`${k}__sc`];
-  const showDone = !!checks[`${k}__show`];
-  const ok = scDone && showDone;
+function CompactArtistCard({ a, fest, day, onSelect }) {
   const color = sigColor(a.signal);
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
 
@@ -1766,7 +1760,7 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
   const chipBorder = T.border;
   const textTertiary = T.text4;
   const textSecondary = T.text3;
-  const accentLeft = ok ? "#16a34a" : color;
+  const accentLeft = color;
 
   return (
     <div style={{ background: T.bg, borderRadius: 14, padding: "0.75rem" }}>
@@ -1838,9 +1832,6 @@ function CompactArtistCard({ a, fest, day, checks, toggleCheck, onSelect }) {
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: a.toMon ? 1 : 0.5 }}>
             🎧 Mon <strong style={{ color: cardText, fontWeight: 500 }}>{noInfo(a.toMon) || "No"}</strong>
           </span>
-          {ok && (
-            <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "1px 7px" }}>✓ OK</span>
-          )}
         </div>
       </div>
     </div>
@@ -2140,12 +2131,34 @@ function RuloFormModal({ initial, prefillPos, onSave, onClose }) {
 }
 
 /* ---------- horarios ---------- */
+function HorarioPill({ start, end, color, bg, border, placeholder, T }) {
+  const hasTime = start || end;
+  return (
+    <div style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+      background: hasTime ? bg : T.card2,
+      border: `1px solid ${hasTime ? border : T.border}`,
+      borderRadius: 10, padding: "5px 28px", minWidth: 180,
+    }}>
+      {hasTime ? (
+        <>
+          <span style={{ fontSize: 18, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{start || "—"}</span>
+          {end && <><span style={{ fontSize: 13, color: T.text4 }}>→</span><span style={{ fontSize: 18, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{end}</span></>}
+        </>
+      ) : (
+        <span style={{ fontSize: 12, color: T.text4, fontFamily: "monospace" }}>{placeholder}</span>
+      )}
+    </div>
+  );
+}
+
 function HorariosView({ artists, day, onSaveTime }) {
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
-  const [section, setSection] = useState("show");
   const [editId, setEditId] = useState(null);
-  const [editStart, setEditStart] = useState("");
-  const [editEnd, setEditEnd] = useState("");
+  const [editScStart, setEditScStart] = useState("");
+  const [editScEnd, setEditScEnd] = useState("");
+  const [editShowStart, setEditShowStart] = useState("");
+  const [editShowEnd, setEditShowEnd] = useState("");
 
   const scColor   = dark ? "#34d399" : "#059669";
   const scBg      = dark ? "#064e3b" : "#ecfdf5";
@@ -2154,55 +2167,30 @@ function HorariosView({ artists, day, onSaveTime }) {
   const showBg     = dark ? "#1e1b4b" : "#eef2ff";
   const showBorder = dark ? "#4338ca55" : "#c7d2fe";
 
-  const isSc     = section === "sc";
-  const color    = isSc ? scColor   : showColor;
-  const bg       = isSc ? scBg      : showBg;
-  const border   = isSc ? scBorder  : showBorder;
-  const startKey = isSc ? "scStart" : "showStart";
-  const endKey   = isSc ? "scEnd"   : "showEnd";
-
   const sorted = [...artists].sort((a, b) => {
-    const ta = festTimeToMin(a[startKey]);
-    const tb = festTimeToMin(b[startKey]);
+    const ta = festTimeToMin(a.showStart || a.scStart);
+    const tb = festTimeToMin(b.showStart || b.scStart);
     return ta - tb;
   });
 
   function openEdit(a) {
     setEditId(a.id);
-    setEditStart(a[startKey] || "");
-    setEditEnd(a[endKey] || "");
+    setEditScStart(a.scStart || "");
+    setEditScEnd(a.scEnd || "");
+    setEditShowStart(a.showStart || "");
+    setEditShowEnd(a.showEnd || "");
   }
 
   async function confirmEdit(artId) {
-    await onSaveTime(artId, { [startKey]: editStart, [endKey]: editEnd });
-    setEditId(null);
-  }
-
-  function switchSection(s) {
-    setSection(s);
+    await onSaveTime(artId, {
+      scStart: editScStart, scEnd: editScEnd,
+      showStart: editShowStart, showEnd: editShowEnd,
+    });
     setEditId(null);
   }
 
   return (
     <div>
-      {/* toggle SC / SHOW */}
-      <div style={{ display: "flex", gap: 4, background: T.card2, borderRadius: 10, padding: 3, marginBottom: 16, alignSelf: "flex-start", width: "fit-content" }}>
-        {[["sc", "SOUNDCHECK"], ["show", "SHOW"]].map(([key, label]) => {
-          const active = section === key;
-          const ac = key === "sc" ? scColor : showColor;
-          return (
-            <button key={key} onClick={() => switchSection(key)} style={{
-              padding: "5px 14px", borderRadius: 8, fontSize: 11,
-              fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
-              border: "none",
-              background: active ? (dark ? "#334155" : "#0f172a") : "transparent",
-              color: active ? "#fff" : T.text4,
-              transition: "all 0.2s",
-            }}>{label}</button>
-          );
-        })}
-      </div>
-
       {artists.length === 0 && (
         <div style={{ textAlign: "center", color: T.text4, fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
       )}
@@ -2210,50 +2198,51 @@ function HorariosView({ artists, day, onSaveTime }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {sorted.map(a => {
           const isEditing = editId === a.id;
-          const start = a[startKey];
-          const end   = a[endKey];
-          const hasTime = start || end;
+          const hasAnytime = a.scStart || a.scEnd || a.showStart || a.showEnd;
 
           return (
             <div key={a.id} style={{
               background: T.card,
-              border: `1px solid ${isEditing ? border : T.border}`,
-              borderLeft: `3px solid ${hasTime ? color : T.border}`,
+              border: `1px solid ${isEditing ? scBorder : T.border}`,
+              borderLeft: `3px solid ${hasAnytime ? showColor : T.border}`,
               borderRadius: 12,
               padding: "12px 14px",
+              textAlign: "center",
             }}>
               {isEditing ? (
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.04em" }}>{a.artist || "—"}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 12, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.04em" }}>{a.artist || "—"}</div>
                   <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 5 }}>INICIO</div>
-                      <input type="time" value={editStart} onChange={e => setEditStart(e.target.value)} style={{ ...S.input, padding: "10px 12px" }} autoFocus />
+                      <div style={{ fontSize: 9, color: scColor, letterSpacing: "0.1em", marginBottom: 5 }}>SC INICIO</div>
+                      <input type="time" value={editScStart} onChange={e => setEditScStart(e.target.value)} style={{ ...S.input, padding: "10px 12px" }} autoFocus />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 5 }}>FIN</div>
-                      <input type="time" value={editEnd} onChange={e => setEditEnd(e.target.value)} style={{ ...S.input, padding: "10px 12px" }} />
+                      <div style={{ fontSize: 9, color: scColor, letterSpacing: "0.1em", marginBottom: 5 }}>SC FIN</div>
+                      <input type="time" value={editScEnd} onChange={e => setEditScEnd(e.target.value)} style={{ ...S.input, padding: "10px 12px" }} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 9, color: showColor, letterSpacing: "0.1em", marginBottom: 5 }}>SH INICIO</div>
+                      <input type="time" value={editShowStart} onChange={e => setEditShowStart(e.target.value)} style={{ ...S.input, padding: "10px 12px" }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 9, color: showColor, letterSpacing: "0.1em", marginBottom: 5 }}>SH FIN</div>
+                      <input type="time" value={editShowEnd} onChange={e => setEditShowEnd(e.target.value)} style={{ ...S.input, padding: "10px 12px" }} />
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => confirmEdit(a.id)} style={{ flex: 1, padding: "10px", background: color, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "monospace" }}>Guardar</button>
+                    <button onClick={() => confirmEdit(a.id)} style={{ flex: 1, padding: "10px", background: showColor, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "monospace" }}>Guardar</button>
                     <button onClick={() => setEditId(null)} style={{ ...S.smBtn, flex: 0.5 }}>Cancelar</button>
                   </div>
                 </div>
               ) : (
-                <div style={{ cursor: "pointer", textAlign: "center" }} onClick={() => openEdit(a)}>
-                  {/* horario centrado */}
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: hasTime ? bg : T.card2, border: `1px solid ${hasTime ? border : T.border}`, borderRadius: 10, padding: "5px 14px", marginBottom: 8 }}>
-                    {hasTime ? (
-                      <>
-                        <span style={{ fontSize: 18, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{start}</span>
-                        {end && <><span style={{ fontSize: 13, color: T.text4 }}>→</span><span style={{ fontSize: 18, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{end}</span></>}
-                      </>
-                    ) : (
-                      <span style={{ fontSize: 12, color: T.text4, fontFamily: "monospace" }}>+ hora</span>
-                    )}
+                <div style={{ cursor: "pointer" }} onClick={() => openEdit(a)}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                    <HorarioPill start={a.scStart} end={a.scEnd} color={scColor} bg={scBg} border={scBorder} placeholder="+ SC" T={T} />
+                    <HorarioPill start={a.showStart} end={a.showEnd} color={showColor} bg={showBg} border={showBorder} placeholder="+ SH" T={T} />
                   </div>
-                  {/* artista + lápiz */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em" }}>{a.artist || "—"}</div>
