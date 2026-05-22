@@ -1052,9 +1052,9 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
     await onEditFest(withLog(updateStage(updatedDays), mkLog(userEmail, "DEL_ARTIST", artName)));
   }
 
-  async function saveArtistTime(artId, startTime, endTime) {
+  async function saveArtistTime(artId, fields) {
     const updatedDays = stage.days.map((d, i) => i === dayIdx ? {
-      ...d, artists: d.artists.map(a => a.id === artId ? { ...a, startTime, endTime } : a)
+      ...d, artists: d.artists.map(a => a.id === artId ? { ...a, ...fields } : a)
     } : d);
     await onEditFest(updateStage(updatedDays));
   }
@@ -2134,116 +2134,135 @@ function RuloFormModal({ initial, prefillPos, onSave, onClose }) {
 /* ---------- horarios ---------- */
 function HorariosView({ artists, day, onSaveTime }) {
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
-  const [editId, setEditId] = useState(null);
+  // editState: { id, section } where section = "sc" | "show"
+  const [editState, setEditState] = useState(null);
   const [editStart, setEditStart] = useState("");
   const [editEnd, setEditEnd] = useState("");
 
-  const sorted = [...artists].sort((a, b) => {
-    if (!a.startTime && !b.startTime) return 0;
-    if (!a.startTime) return 1;
-    if (!b.startTime) return -1;
-    return a.startTime.localeCompare(b.startTime);
-  });
+  const scColor   = dark ? "#34d399" : "#059669";
+  const scBg      = dark ? "#064e3b" : "#ecfdf5";
+  const scBorder  = dark ? "#06564055" : "#a7f3d0";
+  const showColor  = dark ? "#818cf8" : "#4f46e5";
+  const showBg     = dark ? "#1e1b4b" : "#eef2ff";
+  const showBorder = dark ? "#4338ca55" : "#c7d2fe";
 
-  function openEdit(a) {
-    setEditId(a.id);
-    setEditStart(a.startTime || "");
-    setEditEnd(a.endTime || "");
+  function sortByTime(list, startKey) {
+    return [...list].sort((a, b) => {
+      if (!a[startKey] && !b[startKey]) return 0;
+      if (!a[startKey]) return 1;
+      if (!b[startKey]) return -1;
+      return a[startKey].localeCompare(b[startKey]);
+    });
   }
 
-  async function confirmEdit(a) {
-    await onSaveTime(a.id, editStart, editEnd);
-    setEditId(null);
+  function openEdit(a, section) {
+    setEditState({ id: a.id, section });
+    if (section === "sc") {
+      setEditStart(a.scStart || "");
+      setEditEnd(a.scEnd || "");
+    } else {
+      setEditStart(a.showStart || "");
+      setEditEnd(a.showEnd || "");
+    }
   }
 
-  const accentColor = dark ? "#818cf8" : "#4f46e5";
-  const accentBg = dark ? "#1e1b4b" : "#eef2ff";
-  const accentBorder = dark ? "#4338ca55" : "#c7d2fe";
+  async function confirmEdit(artId) {
+    const { section } = editState;
+    const fields = section === "sc"
+      ? { scStart: editStart, scEnd: editEnd }
+      : { showStart: editStart, showEnd: editEnd };
+    await onSaveTime(artId, fields);
+    setEditState(null);
+  }
+
+  if (artists.length === 0) return (
+    <div style={{ textAlign: "center", color: T.text4, fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
+  );
+
+  function ArtistRow({ a, section }) {
+    const isEditing = editState?.id === a.id && editState?.section === section;
+    const isSc = section === "sc";
+    const color  = isSc ? scColor  : showColor;
+    const bg     = isSc ? scBg     : showBg;
+    const border = isSc ? scBorder : showBorder;
+    const start  = isSc ? a.scStart  : a.showStart;
+    const end    = isSc ? a.scEnd    : a.showEnd;
+    const hasTime = start || end;
+
+    return (
+      <div style={{
+        background: T.card,
+        border: `1px solid ${isEditing ? border : T.border}`,
+        borderLeft: `3px solid ${hasTime ? color : T.border}`,
+        borderRadius: 12,
+        padding: "12px 14px",
+      }}>
+        {isEditing ? (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.04em" }}>{a.artist || "—"}</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 5 }}>INICIO</div>
+                <input type="time" value={editStart} onChange={e => setEditStart(e.target.value)} style={{ ...S.input, padding: "10px 12px" }} autoFocus />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 5 }}>FIN</div>
+                <input type="time" value={editEnd} onChange={e => setEditEnd(e.target.value)} style={{ ...S.input, padding: "10px 12px" }} />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => confirmEdit(a.id)} style={{ flex: 1, padding: "10px", background: color, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "monospace" }}>Guardar</button>
+              <button onClick={() => setEditState(null)} style={{ ...S.smBtn, flex: 0.5 }}>Cancelar</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={() => openEdit(a, section)}>
+            <div style={{ minWidth: 80, textAlign: "center", background: hasTime ? bg : T.card2, border: `1px solid ${hasTime ? border : T.border}`, borderRadius: 10, padding: "6px 8px" }}>
+              {hasTime ? (
+                <>
+                  <div style={{ fontSize: 14, fontWeight: 700, color, fontFamily: "monospace" }}>{start}</div>
+                  {end && <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>→ {end}</div>}
+                </>
+              ) : (
+                <div style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>+ hora</div>
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
+              {a.console && <div style={{ fontSize: 11, color: T.text3, marginTop: 2, fontFamily: "monospace" }}>{a.console}</div>}
+            </div>
+            <span style={{ color: T.text4, fontSize: 14, flexShrink: 0 }}>✏️</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const scSorted   = sortByTime(artists, "scStart");
+  const showSorted = sortByTime(artists, "showStart");
 
   return (
     <div>
-      <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.12em", marginBottom: 12, fontWeight: 700 }}>
-        {day.label} — {sorted.length} artistas
+      {/* SOUNDCHECKS */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: scColor, flexShrink: 0 }} />
+        <div style={{ fontSize: 10, fontWeight: 700, color: scColor, letterSpacing: "0.14em" }}>SOUNDCHECKS</div>
+        <div style={{ flex: 1, height: 1, background: scBorder }} />
+        <div style={{ fontSize: 10, color: T.text4 }}>{day.label}</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 22 }}>
+        {scSorted.map(a => <ArtistRow key={a.id} a={a} section="sc" />)}
       </div>
 
-      {sorted.length === 0 && (
-        <div style={{ textAlign: "center", color: T.text4, fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
-      )}
-
+      {/* SHOWS */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: showColor, flexShrink: 0 }} />
+        <div style={{ fontSize: 10, fontWeight: 700, color: showColor, letterSpacing: "0.14em" }}>SHOWS</div>
+        <div style={{ flex: 1, height: 1, background: showBorder }} />
+        <div style={{ fontSize: 10, color: T.text4 }}>{day.label}</div>
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {sorted.map(a => {
-          const isEditing = editId === a.id;
-          const hasTime = a.startTime || a.endTime;
-          return (
-            <div key={a.id} style={{
-              background: T.card,
-              border: `1px solid ${isEditing ? accentBorder : T.border}`,
-              borderLeft: `3px solid ${hasTime ? accentColor : T.border}`,
-              borderRadius: 12,
-              padding: "12px 14px",
-            }}>
-              {isEditing ? (
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.04em" }}>{a.artist || "—"}</div>
-                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 5 }}>INICIO</div>
-                      <input
-                        type="time"
-                        value={editStart}
-                        onChange={e => setEditStart(e.target.value)}
-                        style={{ ...S.input, padding: "10px 12px" }}
-                        autoFocus
-                      />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 5 }}>FIN</div>
-                      <input
-                        type="time"
-                        value={editEnd}
-                        onChange={e => setEditEnd(e.target.value)}
-                        style={{ ...S.input, padding: "10px 12px" }}
-                      />
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      onClick={() => confirmEdit(a)}
-                      style={{ flex: 1, padding: "10px", background: accentColor, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "monospace" }}
-                    >Guardar</button>
-                    <button
-                      onClick={() => setEditId(null)}
-                      style={{ ...S.smBtn, flex: 0.5 }}
-                    >Cancelar</button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }} onClick={() => openEdit(a)}>
-                  <div style={{
-                    minWidth: 72, textAlign: "center",
-                    background: hasTime ? accentBg : T.card2,
-                    border: `1px solid ${hasTime ? accentBorder : T.border}`,
-                    borderRadius: 10, padding: "6px 8px", cursor: "pointer",
-                  }}>
-                    {hasTime ? (
-                      <>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: accentColor, fontFamily: "monospace" }}>{a.startTime || "—"}</div>
-                        <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>{a.endTime || "—"}</div>
-                      </>
-                    ) : (
-                      <div style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>+ hora</div>
-                    )}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
-                    <div style={{ fontSize: 11, color: T.text3, marginTop: 2, fontFamily: "monospace" }}>{a.console || ""}</div>
-                  </div>
-                  <span style={{ color: T.text4, fontSize: 16, flexShrink: 0 }}>✏️</span>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {showSorted.map(a => <ArtistRow key={a.id} a={a} section="show" />)}
       </div>
     </div>
   );
