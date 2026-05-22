@@ -55,6 +55,12 @@ function sigColor(s) {
   return "#64748b";
 }
 const uid = () => Math.random().toString(36).slice(2, 9);
+// Festival 24h sort: hours 00-05 are treated as "next day" (after midnight)
+function festTimeToMin(t) {
+  if (!t) return Infinity;
+  const [h, m] = t.split(":").map(Number);
+  return (h < 6 ? h + 24 : h) * 60 + (m || 0);
+}
 const noInfo = v => v === "?" ? "NO INFO" : v;
 function mkLog(userEmail, action, detail) {
   return { ts: new Date().toISOString(), user: userEmail || "?", action, detail: detail || "" };
@@ -1010,7 +1016,9 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
   }
 
   const day = stage.days[dayIdx];
-  const artists = day ? day.artists : [];
+  const artists = day
+    ? [...day.artists].sort((a, b) => festTimeToMin(a.showStart) - festTimeToMin(b.showStart))
+    : [];
   const art = artists.find(a => a.id === selectedId) || null;
 
   const ckey = art ? `${fest.id}__${day.id}__${art.id}` : null;
@@ -2154,10 +2162,9 @@ function HorariosView({ artists, day, onSaveTime }) {
   const endKey   = isSc ? "scEnd"   : "showEnd";
 
   const sorted = [...artists].sort((a, b) => {
-    if (!a[startKey] && !b[startKey]) return 0;
-    if (!a[startKey]) return 1;
-    if (!b[startKey]) return -1;
-    return a[startKey].localeCompare(b[startKey]);
+    const ta = festTimeToMin(a[startKey]);
+    const tb = festTimeToMin(b[startKey]);
+    return ta - tb;
   });
 
   function openEdit(a) {
