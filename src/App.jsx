@@ -2134,7 +2134,7 @@ function RuloFormModal({ initial, prefillPos, onSave, onClose }) {
 /* ---------- horarios ---------- */
 function HorariosView({ artists, day, onSaveTime }) {
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
-  const [section, setSection] = useState("sc");
+  const [section, setSection] = useState("show");
   const [editId, setEditId] = useState(null);
   const [editStart, setEditStart] = useState("");
   const [editEnd, setEditEnd] = useState("");
