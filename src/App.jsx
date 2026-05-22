@@ -1052,6 +1052,13 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
     await onEditFest(withLog(updateStage(updatedDays), mkLog(userEmail, "DEL_ARTIST", artName)));
   }
 
+  async function saveArtistTime(artId, startTime, endTime) {
+    const updatedDays = stage.days.map((d, i) => i === dayIdx ? {
+      ...d, artists: d.artists.map(a => a.id === artId ? { ...a, startTime, endTime } : a)
+    } : d);
+    await onEditFest(updateStage(updatedDays));
+  }
+
   function addNote(text) {
     if (!text.trim()) return;
     setNotes({ ...notes, [ckey]: [...myNotes, { text: text.trim(), ts: Date.now() }] });
@@ -1078,7 +1085,7 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
       {/* BANDAS / RULOS tab switcher + sync */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", paddingBottom: 2 }}>
         <div style={{ display: "flex", gap: 4, background: T.card2, borderRadius: 10, padding: 3 }}>
-          {["bandas", "rulos"].map(t => (
+          {["bandas", "rulos", "horarios"].map(t => (
             <button key={t} onClick={() => { setTab(t); setSelectedId(null); setShowAdd(false); }} style={{
               padding: "4px 10px", borderRadius: 8, fontSize: 11,
               fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
@@ -1086,7 +1093,7 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
               background: tab === t ? (dark ? "#334155" : "#0f172a") : "transparent",
               color: tab === t ? "#fff" : T.text4,
               transition: "all 0.2s",
-            }}>{t === "bandas" ? "BANDAS" : "RULOS"}</button>
+            }}>{t === "bandas" ? "BANDAS" : t === "rulos" ? "RULOS" : "HORARIOS"}</button>
           ))}
         </div>
         <button onClick={onRefresh} style={{ ...S.syncBtn, flexShrink: 0 }}>↻ {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : ""}</button>
@@ -1329,6 +1336,14 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
             onAdd={(pos) => { setEditRuloId(null); setShowRuloForm(true); setPrefillPos(pos || null); }}
             onEdit={(id) => { setEditRuloId(id); setShowRuloForm(true); setPrefillPos(null); }}
             onDelete={deleteRulo}
+          />
+        </div>
+      ) : tab === "horarios" ? (
+        <div style={{ flex: 1, padding: "12px 14px", background: T.bg, overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+          <HorariosView
+            artists={artists}
+            day={day}
+            onSaveTime={saveArtistTime}
           />
         </div>
       ) : (
@@ -2098,6 +2113,124 @@ function RuloFormModal({ initial, prefillPos, onSave, onClose }) {
         <button onClick={confirm} disabled={!valid} style={{ ...S.bigBtn, marginTop: 0, opacity: valid ? 1 : 0.4 }}>
           {isEdit ? "GUARDAR CAMBIOS" : "AÑADIR CONEXIÓN"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- horarios ---------- */
+function HorariosView({ artists, day, onSaveTime }) {
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
+  const [editId, setEditId] = useState(null);
+  const [editStart, setEditStart] = useState("");
+  const [editEnd, setEditEnd] = useState("");
+
+  const sorted = [...artists].sort((a, b) => {
+    if (!a.startTime && !b.startTime) return 0;
+    if (!a.startTime) return 1;
+    if (!b.startTime) return -1;
+    return a.startTime.localeCompare(b.startTime);
+  });
+
+  function openEdit(a) {
+    setEditId(a.id);
+    setEditStart(a.startTime || "");
+    setEditEnd(a.endTime || "");
+  }
+
+  async function confirmEdit(a) {
+    await onSaveTime(a.id, editStart, editEnd);
+    setEditId(null);
+  }
+
+  const accentColor = dark ? "#818cf8" : "#4f46e5";
+  const accentBg = dark ? "#1e1b4b" : "#eef2ff";
+  const accentBorder = dark ? "#4338ca55" : "#c7d2fe";
+
+  return (
+    <div>
+      <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.12em", marginBottom: 12, fontWeight: 700 }}>
+        {day.label} — {sorted.length} artistas
+      </div>
+
+      {sorted.length === 0 && (
+        <div style={{ textAlign: "center", color: T.text4, fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {sorted.map(a => {
+          const isEditing = editId === a.id;
+          const hasTime = a.startTime || a.endTime;
+          return (
+            <div key={a.id} style={{
+              background: T.card,
+              border: `1px solid ${isEditing ? accentBorder : T.border}`,
+              borderLeft: `3px solid ${hasTime ? accentColor : T.border}`,
+              borderRadius: 12,
+              padding: "12px 14px",
+            }}>
+              {isEditing ? (
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.04em" }}>{a.artist || "—"}</div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 5 }}>INICIO</div>
+                      <input
+                        type="time"
+                        value={editStart}
+                        onChange={e => setEditStart(e.target.value)}
+                        style={{ ...S.input, padding: "10px 12px" }}
+                        autoFocus
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 5 }}>FIN</div>
+                      <input
+                        type="time"
+                        value={editEnd}
+                        onChange={e => setEditEnd(e.target.value)}
+                        style={{ ...S.input, padding: "10px 12px" }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => confirmEdit(a)}
+                      style={{ flex: 1, padding: "10px", background: accentColor, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "monospace" }}
+                    >Guardar</button>
+                    <button
+                      onClick={() => setEditId(null)}
+                      style={{ ...S.smBtn, flex: 0.5 }}
+                    >Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }} onClick={() => openEdit(a)}>
+                  <div style={{
+                    minWidth: 72, textAlign: "center",
+                    background: hasTime ? accentBg : T.card2,
+                    border: `1px solid ${hasTime ? accentBorder : T.border}`,
+                    borderRadius: 10, padding: "6px 8px", cursor: "pointer",
+                  }}>
+                    {hasTime ? (
+                      <>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: accentColor, fontFamily: "monospace" }}>{a.startTime || "—"}</div>
+                        <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>{a.endTime || "—"}</div>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>+ hora</div>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.artist || "—"}</div>
+                    <div style={{ fontSize: 11, color: T.text3, marginTop: 2, fontFamily: "monospace" }}>{a.console || ""}</div>
+                  </div>
+                  <span style={{ color: T.text4, fontSize: 16, flexShrink: 0 }}>✏️</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
