@@ -1487,7 +1487,7 @@ function AddArtistScreen({ onAdd, onBack, initial }) {
         <input value={f.tecnico || ""} onChange={e => set("tecnico", e.target.value)} placeholder="Técnico" style={S.input} />
       </div>
       <input value={f.preset} onChange={e => set("preset", e.target.value)} placeholder="Preset" style={{ ...S.input, marginBottom: 8 }} />
-      <textarea value={f.corriente} onChange={e => set("corriente", e.target.value)} placeholder="Notas de corriente" rows={2} style={{ ...S.input, marginBottom: 14, resize: "vertical", fontFamily: "inherit", fontSize: 13 }} />
+      <textarea value={f.corriente} onChange={e => set("corriente", e.target.value)} placeholder="Corriente" rows={1} style={{ ...S.input, marginBottom: 14, resize: "vertical", fontFamily: "inherit", fontSize: 12 }} />
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={confirm} disabled={!f.artist.trim()} style={{ ...S.bigBtn, flex: 1, padding: "13px", marginTop: 0, opacity: f.artist.trim() ? 1 : 0.4 }}>{isEdit ? "Guardar cambios" : "Guardar artista"}</button>
         <button onClick={onBack} style={{ ...S.navBtn, flex: 0.5 }}>‹ Volver</button>
@@ -1809,6 +1809,16 @@ function CompactArtistCard({ a, fest, day, onSelect }) {
           <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color }}>
             {noInfo(a.signal) || "—"}
           </span>
+          {a.corriente && (
+            <span style={{
+              fontSize: 9, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.06em", textTransform: "uppercase",
+              padding: "2px 6px", borderRadius: 4,
+              background: "#fefce8", border: "0.5px solid #fde047", color: "#a16207",
+              display: "inline-flex", alignItems: "center", gap: 3,
+            }}>
+              ⚡ Corriente
+            </span>
+          )}
           {a.preset && (
             <span style={{
               marginLeft: "auto", fontSize: 11, fontWeight: 500, fontFamily: "monospace",
