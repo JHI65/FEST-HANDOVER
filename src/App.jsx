@@ -886,61 +886,6 @@ function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
               </div>
             </div>
 
-            {/* --- DÍAS --- */}
-            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: T.text4, textTransform: "uppercase", marginTop: 22, marginBottom: 10 }}>DÍAS</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {activeStage.days.map((d, i) => (
-                <div key={d.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: T.card2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, fontFamily: "monospace", color: T.text3, flexShrink: 0 }}>{i + 1}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <input
-                      defaultValue={d.label}
-                      onBlur={e => updateDayLabel(activeStage.id, d.id, e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && e.target.blur()}
-                      style={{ width: "100%", background: "transparent", border: "none", outline: "none", fontSize: 13, fontWeight: 700, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", color: T.text }}
-                    />
-                    <input
-                      type="date"
-                      value={d.date || ""}
-                      onChange={e => updateDayDate(activeStage.id, d.id, e.target.value)}
-                      style={{ fontSize: 11, background: "transparent", border: "none", outline: "none", color: T.text3, fontFamily: "monospace", marginTop: 2, width: "100%" }}
-                    />
-                  </div>
-                  <div style={{ fontSize: 10, color: T.text4, flexShrink: 0 }}>{d.artists.length} art.</div>
-                  {activeStage.days.length > 1 && (
-                    <button onClick={() => deleteDayFromStage(activeStage.id, d.id)}
-                      style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "#ef4444", color: "#fff", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>−</button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {showDayAdd ? (
-              <div style={{ marginTop: 10, background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
-                <input
-                  value={newDayLabel}
-                  onChange={e => setNewDayLabel(e.target.value)}
-                  placeholder={`DÍA ${activeStage.days.length + 1}`}
-                  style={{ ...S.input, fontSize: 13 }}
-                  autoFocus
-                />
-                <input
-                  type="date"
-                  value={newDayDate}
-                  onChange={e => setNewDayDate(e.target.value)}
-                  style={{ ...S.input, fontSize: 13, fontFamily: "monospace" }}
-                />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => {
-                    addDayToStage(activeStage.id, newDayLabel.trim() || undefined, newDayDate || undefined);
-                    setShowDayAdd(false); setNewDayLabel(""); setNewDayDate("");
-                  }} style={{ ...S.bigBtn, flex: 1, padding: "10px", marginTop: 0, fontSize: 13 }}>Añadir día</button>
-                  <button onClick={() => { setShowDayAdd(false); setNewDayLabel(""); setNewDayDate(""); }} style={{ ...S.navBtn, flex: 0.5 }}>Cancelar</button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setShowDayAdd(true)} style={{ ...S.addBtn, marginTop: 10 }}>+ Añadir día</button>
-            )}
           </div>
         ) : (
           <>
@@ -954,7 +899,86 @@ function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {(fest.stages || []).map(st => {
                 const total = totalForStage(st);
-                const isRenaming = renamingId === st.id;
+                const isExpanded = renamingId === st.id;
+                if (isExpanded) {
+                  return (
+                    <div key={st.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 16, padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
+                      {/* nombre editable + cerrar */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                        <input value={renameVal} onChange={e => setRenameVal(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === "Enter" && renameVal.trim()) {
+                              onEditFest({ ...fest, stages: (fest.stages || []).map(s => s.id === st.id ? { ...s, name: renameVal.trim().toUpperCase() } : s) });
+                              setRenamingId(null);
+                            }
+                            if (e.key === "Escape") setRenamingId(null);
+                          }}
+                          style={{ ...S.input, flex: 1, padding: "6px 10px", fontSize: 14, fontWeight: 700 }}
+                          autoFocus />
+                        <button onClick={() => {
+                          if (renameVal.trim()) onEditFest({ ...fest, stages: (fest.stages || []).map(s => s.id === st.id ? { ...s, name: renameVal.trim().toUpperCase() } : s) });
+                          setRenamingId(null); setShowDayAdd(false); setNewDayLabel(""); setNewDayDate("");
+                        }} style={{ background: T.card2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 13, color: T.text2, cursor: "pointer", flexShrink: 0 }}>✓</button>
+                      </div>
+
+                      {/* DÍAS */}
+                      <div style={{ fontSize: 10, letterSpacing: "0.08em", color: T.text4, textTransform: "uppercase", marginBottom: 8 }}>DÍAS</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {st.days.map((d, i) => (
+                          <div key={d.id} style={{ background: T.card2, borderRadius: 10, padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ width: 24, height: 24, borderRadius: 7, background: T.border, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, fontFamily: "monospace", color: T.text3, flexShrink: 0 }}>{i + 1}</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <input
+                                defaultValue={d.label}
+                                onBlur={e => updateDayLabel(st.id, d.id, e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && e.target.blur()}
+                                style={{ width: "100%", background: "transparent", border: "none", outline: "none", fontSize: 13, fontWeight: 700, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", color: T.text }}
+                              />
+                              <input
+                                type="date"
+                                value={d.date || ""}
+                                onChange={e => updateDayDate(st.id, d.id, e.target.value)}
+                                style={{ fontSize: 11, background: "transparent", border: "none", outline: "none", color: T.text3, fontFamily: "monospace", width: "100%" }}
+                              />
+                            </div>
+                            <div style={{ fontSize: 10, color: T.text4, flexShrink: 0 }}>{d.artists.length} art.</div>
+                            {st.days.length > 1 && (
+                              <button onClick={() => deleteDayFromStage(st.id, d.id)}
+                                style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "#ef4444", color: "#fff", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>−</button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {showDayAdd ? (
+                        <div style={{ marginTop: 8, background: T.card2, borderRadius: 10, padding: "10px" }}>
+                          <input
+                            value={newDayLabel}
+                            onChange={e => setNewDayLabel(e.target.value)}
+                            placeholder={`DÍA ${st.days.length + 1}`}
+                            style={{ ...S.input, marginBottom: 6, fontSize: 13 }}
+                            autoFocus
+                          />
+                          <input
+                            type="date"
+                            value={newDayDate}
+                            onChange={e => setNewDayDate(e.target.value)}
+                            style={{ ...S.input, marginBottom: 8, fontSize: 13, fontFamily: "monospace" }}
+                          />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button onClick={() => {
+                              addDayToStage(st.id, newDayLabel.trim() || undefined, newDayDate || undefined);
+                              setShowDayAdd(false); setNewDayLabel(""); setNewDayDate("");
+                            }} style={{ ...S.bigBtn, flex: 1, padding: "9px", marginTop: 0, fontSize: 12 }}>Añadir día</button>
+                            <button onClick={() => { setShowDayAdd(false); setNewDayLabel(""); setNewDayDate(""); }} style={{ ...S.navBtn, flex: 0.5, fontSize: 12 }}>Cancelar</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => setShowDayAdd(true)} style={{ ...S.addBtn, marginTop: 8, fontSize: 12, padding: "9px" }}>+ Añadir día</button>
+                      )}
+                    </div>
+                  );
+                }
                 return (
                   <div key={st.id}
                     onClick={() => { if (!editMode) setSelectedStage(st.id); }}
@@ -964,26 +988,11 @@ function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
                         style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "#ef4444", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, flexShrink: 0 }}>−</button>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      {isRenaming ? (
-                        <input value={renameVal} onChange={e => setRenameVal(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === "Enter" && renameVal.trim()) {
-                              onEditFest({ ...fest, stages: (fest.stages || []).map(s => s.id === st.id ? { ...s, name: renameVal.trim().toUpperCase() } : s) });
-                              setRenamingId(null);
-                            }
-                            if (e.key === "Escape") setRenamingId(null);
-                          }}
-                          style={{ ...S.input, padding: "6px 10px", fontSize: 14, fontWeight: 700 }}
-                          autoFocus onClick={e => e.stopPropagation()} />
-                      ) : (
-                        <>
-                          <div style={{ fontSize: 17, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em" }}>{st.name}</div>
-                          <div style={{ fontSize: 11, color: T.text4, marginTop: 2 }}>{st.days.length} días · {total} artistas</div>
-                        </>
-                      )}
+                      <div style={{ fontSize: 17, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em" }}>{st.name}</div>
+                      <div style={{ fontSize: 11, color: T.text4, marginTop: 2 }}>{st.days.length} días · {total} artistas</div>
                     </div>
-                    {editMode && !isRenaming && (
-                      <button onClick={e => { e.stopPropagation(); setRenamingId(st.id); setRenameVal(st.name); }}
+                    {editMode && (
+                      <button onClick={e => { e.stopPropagation(); setRenamingId(st.id); setRenameVal(st.name); setShowDayAdd(false); }}
                         style={{ background: T.card2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, color: T.text2, cursor: "pointer", flexShrink: 0 }}>✏️</button>
                     )}
                     {!editMode && <span style={{ color: T.text4, fontSize: 18 }}>›</span>}
