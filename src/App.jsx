@@ -2131,22 +2131,23 @@ function RuloFormModal({ initial, prefillPos, onSave, onClose }) {
 }
 
 /* ---------- horarios ---------- */
-function HorarioPill({ start, end, color, bg, border, placeholder, T }) {
+function HorarioPill({ label, start, end, color, bg, border, T }) {
   const hasTime = start || end;
   return (
     <div style={{
-      display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+      display: "inline-flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
       background: hasTime ? bg : T.card2,
       border: `1px solid ${hasTime ? border : T.border}`,
-      borderRadius: 10, padding: "5px 28px", minWidth: 180,
+      borderRadius: 10, padding: "7px 28px", minWidth: 180,
     }}>
+      <span style={{ fontSize: 9, letterSpacing: "0.14em", color: hasTime ? color : T.text4, fontFamily: "'Bebas Neue',sans-serif" }}>{label}</span>
       {hasTime ? (
-        <>
-          <span style={{ fontSize: 18, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{start || "—"}</span>
-          {end && <><span style={{ fontSize: 13, color: T.text4 }}>→</span><span style={{ fontSize: 18, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{end}</span></>}
-        </>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 17, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{start || "—"}</span>
+          {end && <><span style={{ fontSize: 12, color: T.text4 }}>→</span><span style={{ fontSize: 17, fontWeight: 700, color, fontFamily: "monospace", letterSpacing: "0.04em" }}>{end}</span></>}
+        </div>
       ) : (
-        <span style={{ fontSize: 12, color: T.text4, fontFamily: "monospace" }}>{placeholder}</span>
+        <span style={{ fontSize: 13, color: T.text4, fontFamily: "monospace" }}>—</span>
       )}
     </div>
   );
@@ -2239,16 +2240,16 @@ function HorariosView({ artists, day, onSaveTime }) {
                 </div>
               ) : (
                 <div style={{ cursor: "pointer" }} onClick={() => openEdit(a)}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                    <HorarioPill start={a.scStart} end={a.scEnd} color={scColor} bg={scBg} border={scBorder} placeholder="+ SC" T={T} />
-                    <HorarioPill start={a.showStart} end={a.showEnd} color={showColor} bg={showBg} border={showBorder} placeholder="+ SH" T={T} />
+                  <div style={{ textAlign: "center", marginBottom: 10 }}>
+                    <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em" }}>{a.artist || "—"}</div>
+                    {a.console && <div style={{ fontSize: 11, color: T.text3, fontFamily: "monospace" }}>{a.console}</div>}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em" }}>{a.artist || "—"}</div>
-                      {a.console && <div style={{ fontSize: 11, color: T.text3, fontFamily: "monospace" }}>{a.console}</div>}
-                    </div>
-                    <span style={{ color: T.text4, fontSize: 13, flexShrink: 0 }}>✏️</span>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                    <HorarioPill label="SOUNDCHECK" start={a.scStart} end={a.scEnd} color={scColor} bg={scBg} border={scBorder} T={T} />
+                    <HorarioPill label="SHOW" start={a.showStart} end={a.showEnd} color={showColor} bg={showBg} border={showBorder} T={T} />
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <span style={{ color: T.text4, fontSize: 12 }}>✏️</span>
                   </div>
                 </div>
               )}
