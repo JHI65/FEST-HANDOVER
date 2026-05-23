@@ -2170,8 +2170,8 @@ function HorariosView({ artists, day, onSaveTime }) {
   const showBorder = dark ? "#4338ca55" : "#c7d2fe";
 
   const sorted = [...artists].sort((a, b) => {
-    const ta = festTimeToMin(a.showStart || a.scStart);
-    const tb = festTimeToMin(b.showStart || b.scStart);
+    const ta = horariosTab === "sc" ? festTimeToMin(a.scStart || a.showStart) : festTimeToMin(a.showStart || a.scStart);
+    const tb = horariosTab === "sc" ? festTimeToMin(b.scStart || b.showStart) : festTimeToMin(b.showStart || b.scStart);
     return ta - tb;
   });
 
