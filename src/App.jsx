@@ -802,7 +802,34 @@ function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
   const [renamingId, setRenamingId] = useState(null);
   const [renameVal, setRenameVal] = useState("");
   const [showShare, setShowShare] = useState(false);
+  const [showDayAdd, setShowDayAdd] = useState(false);
+  const [newDayLabel, setNewDayLabel] = useState("");
+  const [newDayDate, setNewDayDate] = useState("");
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
+
+  function addDayToStage(stageId, label, date) {
+    const st = (fest.stages || []).find(s => s.id === stageId);
+    if (!st) return;
+    const newDay = { id: uid(), label: (label || `DÍA ${st.days.length + 1}`).toUpperCase(), artists: [], ...(date ? { date } : {}) };
+    const newStages = (fest.stages || []).map(s => s.id === stageId ? { ...s, days: [...s.days, newDay] } : s);
+    onEditFest(withLog({ ...fest, stages: newStages }, mkLog(userEmail, "ADD_DAY", newDay.label)));
+  }
+
+  function deleteDayFromStage(stageId, dayId) {
+    const newStages = (fest.stages || []).map(s => s.id === stageId ? { ...s, days: s.days.filter(d => d.id !== dayId) } : s);
+    onEditFest(withLog({ ...fest, stages: newStages }, mkLog(userEmail, "DEL_DAY", dayId)));
+  }
+
+  function updateDayDate(stageId, dayId, date) {
+    const newStages = (fest.stages || []).map(s => s.id === stageId ? { ...s, days: s.days.map(d => d.id === dayId ? { ...d, date } : d) } : s);
+    onEditFest({ ...fest, stages: newStages });
+  }
+
+  function updateDayLabel(stageId, dayId, label) {
+    if (!label.trim()) return;
+    const newStages = (fest.stages || []).map(s => s.id === stageId ? { ...s, days: s.days.map(d => d.id === dayId ? { ...d, label: label.trim().toUpperCase() } : d) } : s);
+    onEditFest({ ...fest, stages: newStages });
+  }
 
   function addStage() {
     if (!newName.trim()) return;
@@ -858,6 +885,62 @@ function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
                 </div>
               </div>
             </div>
+
+            {/* --- DÍAS --- */}
+            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: T.text4, textTransform: "uppercase", marginTop: 22, marginBottom: 10 }}>DÍAS</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {activeStage.days.map((d, i) => (
+                <div key={d.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: T.card2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, fontFamily: "monospace", color: T.text3, flexShrink: 0 }}>{i + 1}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <input
+                      defaultValue={d.label}
+                      onBlur={e => updateDayLabel(activeStage.id, d.id, e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && e.target.blur()}
+                      style={{ width: "100%", background: "transparent", border: "none", outline: "none", fontSize: 13, fontWeight: 700, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", color: T.text }}
+                    />
+                    <input
+                      type="date"
+                      value={d.date || ""}
+                      onChange={e => updateDayDate(activeStage.id, d.id, e.target.value)}
+                      style={{ fontSize: 11, background: "transparent", border: "none", outline: "none", color: T.text3, fontFamily: "monospace", marginTop: 2, width: "100%" }}
+                    />
+                  </div>
+                  <div style={{ fontSize: 10, color: T.text4, flexShrink: 0 }}>{d.artists.length} art.</div>
+                  {activeStage.days.length > 1 && (
+                    <button onClick={() => deleteDayFromStage(activeStage.id, d.id)}
+                      style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "#ef4444", color: "#fff", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>−</button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {showDayAdd ? (
+              <div style={{ marginTop: 10, background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <input
+                  value={newDayLabel}
+                  onChange={e => setNewDayLabel(e.target.value)}
+                  placeholder={`DÍA ${activeStage.days.length + 1}`}
+                  style={{ ...S.input, fontSize: 13 }}
+                  autoFocus
+                />
+                <input
+                  type="date"
+                  value={newDayDate}
+                  onChange={e => setNewDayDate(e.target.value)}
+                  style={{ ...S.input, fontSize: 13, fontFamily: "monospace" }}
+                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => {
+                    addDayToStage(activeStage.id, newDayLabel.trim() || undefined, newDayDate || undefined);
+                    setShowDayAdd(false); setNewDayLabel(""); setNewDayDate("");
+                  }} style={{ ...S.bigBtn, flex: 1, padding: "10px", marginTop: 0, fontSize: 13 }}>Añadir día</button>
+                  <button onClick={() => { setShowDayAdd(false); setNewDayLabel(""); setNewDayDate(""); }} style={{ ...S.navBtn, flex: 0.5 }}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setShowDayAdd(true)} style={{ ...S.addBtn, marginTop: 10 }}>+ Añadir día</button>
+            )}
           </div>
         ) : (
           <>
@@ -946,6 +1029,17 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
   const [copySelected, setCopySelected] = useState({});
   const [copyTargetDays, setCopyTargetDays] = useState({});
   const [editRuloId, setEditRuloId] = useState(null);
+  const [showAddDay, setShowAddDay] = useState(false);
+  const [newDayLabel, setNewDayLabel] = useState("");
+  const [newDayDate, setNewDayDate] = useState("");
+
+  // Auto-seleccionar el día cuya fecha coincida con hoy
+  useEffect(() => {
+    const t = new Date();
+    const todayStr = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+    const idx = stage.days.findIndex(d => d.date === todayStr);
+    if (idx >= 0) setDayIdx(idx);
+  }, [stage.id]); // eslint-disable-line
 
   function updateStage(newDays) {
     const newStages = (fest.stages || []).map(s => s.id === stage.id ? { ...s, days: newDays } : s);
@@ -1008,11 +1102,19 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
     onEditFest(withLog({ ...fest, stages: newStages }, mkLog(userEmail, "DEL_RULO", ruloPos)));
   }
 
-  function addDay() {
-    const newDay = { id: uid(), label: `DÍA ${stage.days.length + 1}`, artists: [] };
+  function addDay(label, date) {
+    const newDay = { id: uid(), label: (label || `DÍA ${stage.days.length + 1}`).toUpperCase(), artists: [], ...(date ? { date } : {}) };
     onEditFest(withLog(updateStage([...stage.days, newDay]), mkLog(userEmail, "ADD_DAY", newDay.label)));
     setDayIdx(stage.days.length);
     setSelectedId(null);
+  }
+
+  function confirmAddDay() {
+    if (!newDayLabel.trim() && !newDayDate) return;
+    addDay(newDayLabel.trim() || undefined, newDayDate || undefined);
+    setShowAddDay(false);
+    setNewDayLabel("");
+    setNewDayDate("");
   }
 
   const day = stage.days[dayIdx];
@@ -1107,27 +1209,49 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
         <button onClick={onRefresh} style={{ ...S.syncBtn, flexShrink: 0 }}>↻ {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : ""}</button>
       </div>
       {/* day pills */}
-      <div style={{ display: "flex", gap: 6, overflowX: "auto", width: "100%", paddingBottom: 2 }}>
+      <div style={{ display: "flex", gap: 6, overflowX: "auto", width: "100%", paddingBottom: 2, alignItems: "center" }}>
           {stage.days.map((d, i) => {
             const dn = d.artists.filter(a => checks[`${fest.id}__${d.id}__${a.id}__sc`] && checks[`${fest.id}__${d.id}__${a.id}__show`]).length;
             const active = i === dayIdx;
+            const dateLabel = d.date ? new Date(d.date + "T12:00").toLocaleDateString("es", { day: "numeric", month: "short" }) : null;
             return (
               <button key={d.id} onClick={() => { setDayIdx(i); setSelectedId(null); setShowAdd(false); }} style={{
-                flexShrink: 0, padding: "5px 12px", borderRadius: 20, fontSize: 12,
+                flexShrink: 0, padding: dateLabel ? "4px 12px" : "5px 12px", borderRadius: 20, fontSize: 12,
                 fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
-                whiteSpace: "nowrap", border: "none",
+                whiteSpace: "nowrap", border: "none", lineHeight: 1.2,
                 background: active ? (dark ? "#334155" : "#0f172a") : (dark ? "#1e293b" : "#f1f5f9"),
                 color: active ? "#fff" : T.text4,
               }}>
-                {d.label} <span style={{ opacity: 0.6, fontSize: 10 }}>{dn}/{d.artists.length}</span>
+                <div>{d.label} <span style={{ opacity: 0.6, fontSize: 10 }}>{dn}/{d.artists.length}</span></div>
+                {dateLabel && <div style={{ fontSize: 9, opacity: 0.7, fontFamily: "monospace", letterSpacing: 0, marginTop: 1 }}>{dateLabel}</div>}
               </button>
             );
           })}
-          <button onClick={addDay} style={{
-            flexShrink: 0, padding: "5px 10px", borderRadius: 20, fontSize: 14,
-            fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-            border: "1.5px dashed #94a3b8", background: "transparent", color: "#94a3b8",
-          }}>+</button>
+          {showAddDay ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, background: dark ? "#1e293b" : "#f1f5f9", borderRadius: 14, padding: "4px 8px" }}>
+              <input
+                value={newDayLabel}
+                onChange={e => setNewDayLabel(e.target.value)}
+                placeholder={`DÍA ${stage.days.length + 1}`}
+                style={{ width: 70, fontSize: 11, fontFamily: "'Bebas Neue',sans-serif", background: "transparent", border: "none", outline: "none", color: T.text, letterSpacing: "0.06em" }}
+                autoFocus
+              />
+              <input
+                type="date"
+                value={newDayDate}
+                onChange={e => setNewDayDate(e.target.value)}
+                style={{ fontSize: 10, background: "transparent", border: "none", outline: "none", color: T.text3, fontFamily: "monospace", width: 100 }}
+              />
+              <button onClick={confirmAddDay} style={{ background: dark ? "#334155" : "#0f172a", border: "none", borderRadius: 10, color: "#fff", fontSize: 12, padding: "3px 8px", cursor: "pointer" }}>✓</button>
+              <button onClick={() => { setShowAddDay(false); setNewDayLabel(""); setNewDayDate(""); }} style={{ background: "transparent", border: "none", color: T.text4, fontSize: 14, cursor: "pointer", padding: "2px 4px" }}>×</button>
+            </div>
+          ) : (
+            <button onClick={() => setShowAddDay(true)} style={{
+              flexShrink: 0, padding: "5px 10px", borderRadius: 20, fontSize: 14,
+              fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+              border: "1.5px dashed #94a3b8", background: "transparent", color: "#94a3b8",
+            }}>+</button>
+          )}
         </div>
     </div>
   );
