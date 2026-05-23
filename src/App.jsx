@@ -1942,16 +1942,6 @@ function CompactArtistCard({ a, fest, day, onSelect }) {
           <span style={{ fontSize: 11, fontWeight: 500, fontFamily: "monospace", padding: "3px 8px", borderRadius: 6, background: chipBg, border: `0.5px solid ${chipBorder}`, color }}>
             {noInfo(a.signal) || "—"}
           </span>
-          {a.corriente && (
-            <span style={{
-              fontSize: 9, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.06em", textTransform: "uppercase",
-              padding: "2px 6px", borderRadius: 4,
-              background: "#fefce8", border: "0.5px solid #fde047", color: "#a16207",
-              display: "inline-flex", alignItems: "center", gap: 3,
-            }}>
-              ⚡ Corriente
-            </span>
-          )}
           {a.preset && (
             <span style={{
               marginLeft: "auto", fontSize: 11, fontWeight: 500, fontFamily: "monospace",
@@ -1966,7 +1956,7 @@ function CompactArtistCard({ a, fest, day, onSelect }) {
           )}
         </div>
 
-        {/* footer: lx · mon · ok/checks */}
+        {/* footer: lx · mon · corriente */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: textSecondary, paddingTop: 8, borderTop: `0.5px solid ${borderC}` }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: a.toLx ? 1 : 0.5 }}>
             💡 LX <strong style={{ color: cardText, fontWeight: 500 }}>{noInfo(a.toLx) || "No"}</strong>
@@ -1975,6 +1965,17 @@ function CompactArtistCard({ a, fest, day, onSelect }) {
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: a.toMon ? 1 : 0.5 }}>
             🎧 Mon <strong style={{ color: cardText, fontWeight: 500 }}>{noInfo(a.toMon) || "No"}</strong>
           </span>
+          {a.corriente && (
+            <>
+              <span style={{ color: textTertiary }}>·</span>
+              <span style={{
+                fontSize: 9, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.06em", textTransform: "uppercase",
+                padding: "2px 6px", borderRadius: 4,
+                background: "#fefce8", border: "0.5px solid #fde047", color: "#a16207",
+                display: "inline-flex", alignItems: "center", gap: 3,
+              }}>⚡ Corriente</span>
+            </>
+          )}
         </div>
       </div>
     </div>
