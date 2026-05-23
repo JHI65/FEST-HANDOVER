@@ -2160,6 +2160,7 @@ function HorariosView({ artists, day, onSaveTime }) {
   const [editScEnd, setEditScEnd] = useState("");
   const [editShowStart, setEditShowStart] = useState("");
   const [editShowEnd, setEditShowEnd] = useState("");
+  const [horariosTab, setHorariosTab] = useState("show");
 
   const scColor   = dark ? "#34d399" : "#059669";
   const scBg      = dark ? "#064e3b" : "#ecfdf5";
@@ -2190,8 +2191,27 @@ function HorariosView({ artists, day, onSaveTime }) {
     setEditId(null);
   }
 
+  const accentColor = horariosTab === "sc" ? scColor : showColor;
+  const accentBorder = horariosTab === "sc" ? scBorder : showBorder;
+
   return (
     <div>
+      {/* toggle SC / SHOW */}
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+        <div style={{ display: "flex", background: T.card2, borderRadius: 12, padding: 3, gap: 3 }}>
+          {[["sc", "SOUNDCHECK", scColor, scBg, scBorder], ["show", "SHOW", showColor, showBg, showBorder]].map(([val, lbl, col, bg, brd]) => (
+            <button key={val} onClick={() => setHorariosTab(val)} style={{
+              padding: "6px 18px", borderRadius: 9, border: "none", cursor: "pointer",
+              fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, letterSpacing: "0.08em",
+              background: horariosTab === val ? bg : "transparent",
+              color: horariosTab === val ? col : T.text4,
+              outline: horariosTab === val ? `1.5px solid ${brd}` : "none",
+              transition: "all 0.15s",
+            }}>{lbl}</button>
+          ))}
+        </div>
+      </div>
+
       {artists.length === 0 && (
         <div style={{ textAlign: "center", color: T.text4, fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>
       )}
@@ -2200,12 +2220,15 @@ function HorariosView({ artists, day, onSaveTime }) {
         {sorted.map(a => {
           const isEditing = editId === a.id;
           const hasAnytime = a.scStart || a.scEnd || a.showStart || a.showEnd;
+          const activePill = horariosTab === "sc"
+            ? { label: "SOUNDCHECK", start: a.scStart, end: a.scEnd, color: scColor, bg: scBg, border: scBorder }
+            : { label: "SHOW", start: a.showStart, end: a.showEnd, color: showColor, bg: showBg, border: showBorder };
 
           return (
             <div key={a.id} style={{
               background: T.card,
-              border: `1px solid ${isEditing ? scBorder : T.border}`,
-              borderLeft: `3px solid ${hasAnytime ? showColor : T.border}`,
+              border: `1px solid ${isEditing ? accentBorder : T.border}`,
+              borderLeft: `3px solid ${hasAnytime ? accentColor : T.border}`,
               borderRadius: 12,
               padding: "12px 14px",
               textAlign: "center",
@@ -2245,8 +2268,7 @@ function HorariosView({ artists, day, onSaveTime }) {
                     {a.console && <div style={{ fontSize: 11, color: T.text3, fontFamily: "monospace" }}>{a.console}</div>}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                    <HorarioPill label="SOUNDCHECK" start={a.scStart} end={a.scEnd} color={scColor} bg={scBg} border={scBorder} T={T} />
-                    <HorarioPill label="SHOW" start={a.showStart} end={a.showEnd} color={showColor} bg={showBg} border={showBorder} T={T} />
+                    <HorarioPill label={activePill.label} start={activePill.start} end={activePill.end} color={activePill.color} bg={activePill.bg} border={activePill.border} T={T} />
                   </div>
                   <div style={{ textAlign: "center" }}>
                     <span style={{ color: T.text4, fontSize: 12 }}>✏️</span>
