@@ -251,6 +251,7 @@ function Main({ session }) {
   const [fests, setFests] = useState(null);
   const [festId, setFestId] = useState(null);
   const [stageId, setStageId] = useState(null);
+  const [monId, setMonId] = useState(null);
   const [dayIdx, setDayIdx] = useState(0);
   const [artIdx, setArtIdx] = useState(0);
   const [notes, setNotesState] = useState({});
@@ -436,6 +437,7 @@ function Main({ session }) {
             onBack={() => setScreen("home")}
             onEditFest={updateFest}
             onOpenStage={(sid) => { setStageId(sid); setDayIdx(0); setScreen("view"); }}
+            onOpenMon={(sid, mid) => { setStageId(sid); setMonId(mid); setDayIdx(0); setScreen("mon"); }}
           />
         )}
         {screen === "builder" && (
@@ -459,6 +461,20 @@ function Main({ session }) {
             lastSync={lastSync}
           />
         )}
+        {screen === "mon" && fest && stage && (() => {
+          const monPos = (stage.monPositions || []).find(p => p.id === monId);
+          return monPos ? (
+            <MonView
+              fest={fest}
+              stage={stage}
+              monPos={monPos}
+              dayIdx={dayIdx}
+              setDayIdx={setDayIdx}
+              onEditFest={updateFest}
+              onBack={() => setScreen("stages")}
+            />
+          ) : null;
+        })()}
       </div>
     </ThemeCtx.Provider>
   );
@@ -794,7 +810,7 @@ function Builder({ onCancel, onSave }) {
 }
 
 /* ---------- stage view ---------- */
-function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
+function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage, onOpenMon }) {
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [selectedStage, setSelectedStage] = useState(null);
@@ -806,7 +822,29 @@ function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
   const [showDayAdd, setShowDayAdd] = useState(false);
   const [newDayLabel, setNewDayLabel] = useState("");
   const [newDayDate, setNewDayDate] = useState("");
+  const [showAddPos, setShowAddPos] = useState(false);
+  const [newPosName, setNewPosName] = useState("MON WORLD");
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
+
+  function addMonPosition() {
+    if (!newPosName.trim()) return;
+    const newPos = { id: uid(), name: newPosName.trim().toUpperCase(), console: "", tecnico: "", inputs: [], outputs: [], rfEntries: [] };
+    const newStages = (fest.stages || []).map(s => s.id === activeStage.id
+      ? { ...s, monPositions: [...(s.monPositions || []), newPos] }
+      : s
+    );
+    onEditFest({ ...fest, stages: newStages });
+    setShowAddPos(false);
+    setNewPosName("MON WORLD");
+  }
+
+  function deleteMonPosition(mid) {
+    const newStages = (fest.stages || []).map(s => s.id === activeStage.id
+      ? { ...s, monPositions: (s.monPositions || []).filter(p => p.id !== mid) }
+      : s
+    );
+    onEditFest({ ...fest, stages: newStages });
+  }
 
   function addDayToStage(stageId, label, date) {
     const st = (fest.stages || []).find(s => s.id === stageId);
@@ -869,6 +907,7 @@ function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
           <div>
             <div style={{ fontSize: 10, letterSpacing: "0.08em", color: T.text4, textTransform: "uppercase", marginBottom: 14 }}>POSICIONES</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {/* FOH position */}
               <button
                 onClick={() => onOpenStage(activeStage.id)}
                 style={{ display: "flex", alignItems: "center", gap: 14, background: dark ? "#334155" : "#0f172a", border: "none", borderRadius: 16, padding: "16px 20px", cursor: "pointer", textAlign: "left" }}>
@@ -878,13 +917,51 @@ function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 1 }}>{totalForStage(activeStage)} artistas · {activeStage.days.length} días</div>
                 </div>
               </button>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, background: T.card, border: `1.5px dashed ${T.border}`, borderRadius: 16, padding: "16px 20px", opacity: 0.5 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: T.card2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>＋</div>
-                <div>
-                  <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: T.text4, letterSpacing: "0.08em" }}>NUEVA POSICIÓN</div>
-                  <div style={{ fontSize: 11, color: T.text4, marginTop: 1 }}>Próximamente</div>
+              {/* MON positions */}
+              {(activeStage.monPositions || []).map(mp => (
+                <div key={mp.id} style={{ display: "flex", alignItems: "center", gap: 10, position: "relative" }}>
+                  <button
+                    onClick={() => onOpenMon(activeStage.id, mp.id)}
+                    style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, background: dark ? "#1e3a4a" : "#0c2233", border: "none", borderRadius: 16, padding: "16px 20px", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🎧</div>
+                    <div>
+                      <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: "#fff", letterSpacing: "0.08em" }}>{mp.name}</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 1 }}>
+                        {(mp.inputs || []).length} inputs · {(mp.outputs || []).length} outputs · {(mp.rfEntries || []).length} RF
+                      </div>
+                    </div>
+                  </button>
+                  {editMode && (
+                    <button onClick={() => deleteMonPosition(mp.id)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "#ef4444", border: "none", borderRadius: 8, color: "#fff", fontSize: 14, width: 28, height: 28, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>×</button>
+                  )}
                 </div>
-              </div>
+              ))}
+              {/* Add new MON position */}
+              {showAddPos ? (
+                <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 16, padding: "16px 20px" }}>
+                  <div style={{ fontSize: 10, letterSpacing: "0.08em", color: T.text4, marginBottom: 10 }}>NOMBRE DE LA POSICIÓN</div>
+                  <input
+                    value={newPosName}
+                    onChange={e => setNewPosName(e.target.value.toUpperCase())}
+                    onKeyDown={e => { if (e.key === "Enter") addMonPosition(); if (e.key === "Escape") { setShowAddPos(false); setNewPosName("MON WORLD"); } }}
+                    placeholder="MON WORLD"
+                    style={{ ...S.input, marginBottom: 12 }}
+                    autoFocus
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={addMonPosition} disabled={!newPosName.trim()} style={{ ...S.bigBtn, flex: 1, padding: "11px", marginTop: 0, fontSize: 13, opacity: newPosName.trim() ? 1 : 0.4 }}>Crear posición</button>
+                    <button onClick={() => { setShowAddPos(false); setNewPosName("MON WORLD"); }} style={{ ...S.navBtn, flex: 0.5 }}>Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setShowAddPos(true)} style={{ display: "flex", alignItems: "center", gap: 14, background: T.card, border: `1.5px dashed ${T.border}`, borderRadius: 16, padding: "16px 20px", cursor: "pointer", textAlign: "left", width: "100%" }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: T.card2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>＋</div>
+                  <div>
+                    <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: T.text3, letterSpacing: "0.08em" }}>NUEVA POSICIÓN MON</div>
+                    <div style={{ fontSize: 11, color: T.text4, marginTop: 1 }}>Añadir posición de monitores</div>
+                  </div>
+                </button>
+              )}
             </div>
 
           </div>
@@ -2444,6 +2521,375 @@ function HorariosView({ artists, day, onSaveTime }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- mon view ---------- */
+function MonView({ fest, stage, monPos, dayIdx, setDayIdx, onEditFest, onBack }) {
+  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
+  const [tab, setTab] = useState("inputs"); // "inputs" | "outputs" | "rf" | "horarios"
+  // inline editing for static fields
+  const [editingConsole, setEditingConsole] = useState(false);
+  const [editingTecnico, setEditingTecnico] = useState(false);
+  const [consoleVal, setConsoleVal] = useState(monPos.console || "");
+  const [tecnicoVal, setTecnicoVal] = useState(monPos.tecnico || "");
+  // add-row forms
+  const [showAddInput, setShowAddInput] = useState(false);
+  const [showAddOutput, setShowAddOutput] = useState(false);
+  const [showAddRf, setShowAddRf] = useState(false);
+  // new row fields
+  const [newInput, setNewInput] = useState({ ch: "", source: "", type: "Mic" });
+  const [newOutput, setNewOutput] = useState({ mix: "", dest: "", type: "Wedge" });
+  const [newRf, setNewRf] = useState({ ch: "", freq: "", user: "", type: "IEM" });
+  // editing rows
+  const [editInputId, setEditInputId] = useState(null);
+  const [editInputVal, setEditInputVal] = useState({});
+  const [editOutputId, setEditOutputId] = useState(null);
+  const [editOutputVal, setEditOutputVal] = useState({});
+  const [editRfId, setEditRfId] = useState(null);
+  const [editRfVal, setEditRfVal] = useState({});
+
+  // sync local vals when monPos changes (e.g. after save)
+  const monPosRef = useRef(monPos);
+  if (monPosRef.current.id !== monPos.id) {
+    monPosRef.current = monPos;
+  }
+
+  function saveMonPos(updated) {
+    const newStages = (fest.stages || []).map(s => s.id === stage.id
+      ? { ...s, monPositions: (s.monPositions || []).map(p => p.id === monPos.id ? updated : p) }
+      : s
+    );
+    onEditFest({ ...fest, stages: newStages });
+  }
+
+  function saveConsole() {
+    setEditingConsole(false);
+    saveMonPos({ ...monPos, console: consoleVal });
+  }
+  function saveTecnico() {
+    setEditingTecnico(false);
+    saveMonPos({ ...monPos, tecnico: tecnicoVal });
+  }
+
+  // INPUTS
+  function addInput() {
+    if (!newInput.ch.trim() && !newInput.source.trim()) return;
+    const entry = { id: uid(), ch: newInput.ch.trim(), source: newInput.source.trim(), type: newInput.type };
+    saveMonPos({ ...monPos, inputs: [...(monPos.inputs || []), entry] });
+    setNewInput({ ch: "", source: "", type: "Mic" });
+    setShowAddInput(false);
+  }
+  function deleteInput(id) { saveMonPos({ ...monPos, inputs: (monPos.inputs || []).filter(x => x.id !== id) }); }
+  function saveInput(id) {
+    saveMonPos({ ...monPos, inputs: (monPos.inputs || []).map(x => x.id === id ? { ...x, ...editInputVal } : x) });
+    setEditInputId(null);
+  }
+
+  // OUTPUTS
+  function addOutput() {
+    if (!newOutput.mix.trim() && !newOutput.dest.trim()) return;
+    const entry = { id: uid(), mix: newOutput.mix.trim(), dest: newOutput.dest.trim(), type: newOutput.type };
+    saveMonPos({ ...monPos, outputs: [...(monPos.outputs || []), entry] });
+    setNewOutput({ mix: "", dest: "", type: "Wedge" });
+    setShowAddOutput(false);
+  }
+  function deleteOutput(id) { saveMonPos({ ...monPos, outputs: (monPos.outputs || []).filter(x => x.id !== id) }); }
+  function saveOutput(id) {
+    saveMonPos({ ...monPos, outputs: (monPos.outputs || []).map(x => x.id === id ? { ...x, ...editOutputVal } : x) });
+    setEditOutputId(null);
+  }
+
+  // RF
+  function addRf() {
+    if (!newRf.ch.trim() && !newRf.freq.trim()) return;
+    const entry = { id: uid(), ch: newRf.ch.trim(), freq: newRf.freq.trim(), user: newRf.user.trim(), type: newRf.type };
+    saveMonPos({ ...monPos, rfEntries: [...(monPos.rfEntries || []), entry] });
+    setNewRf({ ch: "", freq: "", user: "", type: "IEM" });
+    setShowAddRf(false);
+  }
+  function deleteRf(id) { saveMonPos({ ...monPos, rfEntries: (monPos.rfEntries || []).filter(x => x.id !== id) }); }
+  function saveRf(id) {
+    saveMonPos({ ...monPos, rfEntries: (monPos.rfEntries || []).map(x => x.id === id ? { ...x, ...editRfVal } : x) });
+    setEditRfId(null);
+  }
+
+  const day = stage.days[dayIdx] || stage.days[0];
+  const sortedArtists = day ? [...(day.artists || [])].sort((a, b) => festTimeToMin(a.showStart) - festTimeToMin(b.showStart)) : [];
+
+  const rowStyle = { display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 10, background: T.card, border: `1px solid ${T.border}`, marginBottom: 6, fontFamily: "monospace", fontSize: 12 };
+  const cellStyle = { color: T.text2, minWidth: 0, flex: 1 };
+  const labelStyle = { fontSize: 9, color: T.text4, letterSpacing: "0.1em", textTransform: "uppercase", marginRight: 4, flexShrink: 0 };
+
+  const tabBtnStyle = (active) => ({
+    flex: 1, padding: "5px 8px", borderRadius: 8, fontSize: 11,
+    fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
+    border: "none",
+    background: active ? (dark ? "#334155" : "#0f172a") : "transparent",
+    color: active ? "#fff" : T.text4,
+    transition: "all 0.2s",
+  });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
+      {/* top bar */}
+      <div style={{ ...S.topBar, flexDirection: "column", alignItems: "stretch", gap: 0, padding: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px 8px" }}>
+          <button onClick={onBack} style={S.backBtn}>‹</button>
+          <div style={{ flex: 1, textAlign: "center" }}>
+            <div style={{ fontSize: 18, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.06em" }}>🎧 {monPos.name}</div>
+            <div style={{ fontSize: 10, color: T.text3, fontFamily: "monospace", letterSpacing: "0.04em" }}>{stage.name}</div>
+          </div>
+          <div style={{ width: 44 }} />
+        </div>
+        {/* day pills */}
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "0 12px 8px" }}>
+          {stage.days.map((d, i) => (
+            <button key={d.id} onClick={() => setDayIdx(i)} style={{
+              flexShrink: 0, padding: "4px 12px", borderRadius: 20, fontSize: 12,
+              fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
+              whiteSpace: "nowrap", border: "none",
+              background: i === dayIdx ? (dark ? "#334155" : "#0f172a") : (dark ? "#1e293b" : "#f1f5f9"),
+              color: i === dayIdx ? "#fff" : T.text4,
+            }}>{d.label}</button>
+          ))}
+        </div>
+        {/* tab bar */}
+        <div style={{ display: "flex", gap: 4, background: T.card2, borderRadius: 0, padding: "4px 12px", borderTop: `1px solid ${T.border}` }}>
+          {["inputs", "outputs", "rf", "horarios"].map(t => (
+            <button key={t} onClick={() => setTab(t)} style={tabBtnStyle(tab === t)}>
+              {t === "inputs" ? "INPUTS" : t === "outputs" ? "OUTPUTS" : t === "rf" ? "RF" : "HORARIOS"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px", background: T.bg, paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+
+        {/* static info card */}
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "12px 14px", marginBottom: 14, display: "flex", gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 4 }}>CONSOLA</div>
+            {editingConsole ? (
+              <input value={consoleVal} onChange={e => setConsoleVal(e.target.value)} onBlur={saveConsole} onKeyDown={e => { if (e.key === "Enter") saveConsole(); if (e.key === "Escape") { setEditingConsole(false); setConsoleVal(monPos.console || ""); } }}
+                style={{ ...S.input, padding: "5px 8px", fontSize: 13, fontFamily: "monospace" }} autoFocus />
+            ) : (
+              <div onClick={() => { setEditingConsole(true); setConsoleVal(monPos.console || ""); }} style={{ fontSize: 13, color: monPos.console ? T.text : T.text4, fontFamily: "monospace", cursor: "text", padding: "2px 0", minHeight: 20 }}>
+                {monPos.console || "—"}
+              </div>
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.1em", marginBottom: 4 }}>TÉCNICO</div>
+            {editingTecnico ? (
+              <input value={tecnicoVal} onChange={e => setTecnicoVal(e.target.value)} onBlur={saveTecnico} onKeyDown={e => { if (e.key === "Enter") saveTecnico(); if (e.key === "Escape") { setEditingTecnico(false); setTecnicoVal(monPos.tecnico || ""); } }}
+                style={{ ...S.input, padding: "5px 8px", fontSize: 13, fontFamily: "monospace" }} autoFocus />
+            ) : (
+              <div onClick={() => { setEditingTecnico(true); setTecnicoVal(monPos.tecnico || ""); }} style={{ fontSize: 13, color: monPos.tecnico ? T.text : T.text4, fontFamily: "monospace", cursor: "text", padding: "2px 0", minHeight: 20 }}>
+                {monPos.tecnico || "—"}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* INPUTS TAB */}
+        {tab === "inputs" && (
+          <div>
+            <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.08em", marginBottom: 10 }}>INPUTS — {(monPos.inputs || []).length} entradas</div>
+            {/* header */}
+            {(monPos.inputs || []).length > 0 && (
+              <div style={{ display: "flex", gap: 8, padding: "4px 10px", marginBottom: 4 }}>
+                <span style={{ ...labelStyle, width: 28 }}>CH</span>
+                <span style={{ ...labelStyle, flex: 2 }}>SOURCE</span>
+                <span style={{ ...labelStyle, flex: 1 }}>TYPE</span>
+                <span style={{ width: 24 }} />
+              </div>
+            )}
+            {(monPos.inputs || []).map(inp => (
+              editInputId === inp.id ? (
+                <div key={inp.id} style={{ ...rowStyle, flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input value={editInputVal.ch ?? inp.ch} onChange={e => setEditInputVal(v => ({ ...v, ch: e.target.value }))} placeholder="CH" style={{ ...S.input, padding: "5px 8px", width: 60, fontSize: 13 }} autoFocus />
+                    <input value={editInputVal.source ?? inp.source} onChange={e => setEditInputVal(v => ({ ...v, source: e.target.value }))} placeholder="Source" style={{ ...S.input, padding: "5px 8px", flex: 1, fontSize: 13 }} />
+                    <select value={editInputVal.type ?? inp.type} onChange={e => setEditInputVal(v => ({ ...v, type: e.target.value }))} style={{ ...S.input, padding: "5px 8px", width: 90, fontSize: 13 }}>
+                      {["Mic", "Line", "DI", "FX", "Playback"].map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => saveInput(inp.id)} style={{ ...S.smBtn, flex: 1, padding: "6px", fontSize: 12 }}>✓ Guardar</button>
+                    <button onClick={() => setEditInputId(null)} style={{ ...S.smBtn, flex: 0.5, padding: "6px", fontSize: 12 }}>Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <div key={inp.id} style={rowStyle} onClick={() => { setEditInputId(inp.id); setEditInputVal({}); }}>
+                  <span style={{ width: 28, color: T.text3, fontWeight: 700, fontSize: 11, flexShrink: 0 }}>{inp.ch || "—"}</span>
+                  <span style={{ ...cellStyle, flex: 2 }}>{inp.source || "—"}</span>
+                  <span style={{ ...cellStyle, flex: 1, color: T.text3, fontSize: 11 }}>{inp.type}</span>
+                  <button onClick={e => { e.stopPropagation(); deleteInput(inp.id); }} style={{ background: "none", border: "none", color: T.text4, fontSize: 16, cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>×</button>
+                </div>
+              )
+            ))}
+            {showAddInput ? (
+              <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px", marginTop: 8 }}>
+                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                  <input value={newInput.ch} onChange={e => setNewInput(v => ({ ...v, ch: e.target.value }))} placeholder="CH" style={{ ...S.input, padding: "7px 8px", width: 60, fontSize: 13 }} autoFocus />
+                  <input value={newInput.source} onChange={e => setNewInput(v => ({ ...v, source: e.target.value }))} placeholder="Source" style={{ ...S.input, padding: "7px 8px", flex: 1, fontSize: 13 }} />
+                  <select value={newInput.type} onChange={e => setNewInput(v => ({ ...v, type: e.target.value }))} style={{ ...S.input, padding: "7px 8px", width: 90, fontSize: 13 }}>
+                    {["Mic", "Line", "DI", "FX", "Playback"].map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={addInput} style={{ ...S.bigBtn, flex: 1, padding: "10px", marginTop: 0, fontSize: 13 }}>Añadir</button>
+                  <button onClick={() => { setShowAddInput(false); setNewInput({ ch: "", source: "", type: "Mic" }); }} style={{ ...S.navBtn, flex: 0.5 }}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setShowAddInput(true)} style={{ ...S.addBtn, marginTop: 4 }}>+ Añadir input</button>
+            )}
+          </div>
+        )}
+
+        {/* OUTPUTS TAB */}
+        {tab === "outputs" && (
+          <div>
+            <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.08em", marginBottom: 10 }}>OUTPUTS — {(monPos.outputs || []).length} salidas</div>
+            {(monPos.outputs || []).length > 0 && (
+              <div style={{ display: "flex", gap: 8, padding: "4px 10px", marginBottom: 4 }}>
+                <span style={{ ...labelStyle, width: 28 }}>MIX</span>
+                <span style={{ ...labelStyle, flex: 2 }}>DEST</span>
+                <span style={{ ...labelStyle, flex: 1 }}>TYPE</span>
+                <span style={{ width: 24 }} />
+              </div>
+            )}
+            {(monPos.outputs || []).map(out => (
+              editOutputId === out.id ? (
+                <div key={out.id} style={{ ...rowStyle, flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input value={editOutputVal.mix ?? out.mix} onChange={e => setEditOutputVal(v => ({ ...v, mix: e.target.value }))} placeholder="MIX" style={{ ...S.input, padding: "5px 8px", width: 60, fontSize: 13 }} autoFocus />
+                    <input value={editOutputVal.dest ?? out.dest} onChange={e => setEditOutputVal(v => ({ ...v, dest: e.target.value }))} placeholder="Dest" style={{ ...S.input, padding: "5px 8px", flex: 1, fontSize: 13 }} />
+                    <select value={editOutputVal.type ?? out.type} onChange={e => setEditOutputVal(v => ({ ...v, type: e.target.value }))} style={{ ...S.input, padding: "5px 8px", width: 90, fontSize: 13 }}>
+                      {["Wedge", "IEM", "Fill", "Sub"].map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => saveOutput(out.id)} style={{ ...S.smBtn, flex: 1, padding: "6px", fontSize: 12 }}>✓ Guardar</button>
+                    <button onClick={() => setEditOutputId(null)} style={{ ...S.smBtn, flex: 0.5, padding: "6px", fontSize: 12 }}>Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <div key={out.id} style={rowStyle} onClick={() => { setEditOutputId(out.id); setEditOutputVal({}); }}>
+                  <span style={{ width: 28, color: T.text3, fontWeight: 700, fontSize: 11, flexShrink: 0 }}>{out.mix || "—"}</span>
+                  <span style={{ ...cellStyle, flex: 2 }}>{out.dest || "—"}</span>
+                  <span style={{ ...cellStyle, flex: 1, color: T.text3, fontSize: 11 }}>{out.type}</span>
+                  <button onClick={e => { e.stopPropagation(); deleteOutput(out.id); }} style={{ background: "none", border: "none", color: T.text4, fontSize: 16, cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>×</button>
+                </div>
+              )
+            ))}
+            {showAddOutput ? (
+              <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px", marginTop: 8 }}>
+                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                  <input value={newOutput.mix} onChange={e => setNewOutput(v => ({ ...v, mix: e.target.value }))} placeholder="MIX" style={{ ...S.input, padding: "7px 8px", width: 60, fontSize: 13 }} autoFocus />
+                  <input value={newOutput.dest} onChange={e => setNewOutput(v => ({ ...v, dest: e.target.value }))} placeholder="Dest" style={{ ...S.input, padding: "7px 8px", flex: 1, fontSize: 13 }} />
+                  <select value={newOutput.type} onChange={e => setNewOutput(v => ({ ...v, type: e.target.value }))} style={{ ...S.input, padding: "7px 8px", width: 90, fontSize: 13 }}>
+                    {["Wedge", "IEM", "Fill", "Sub"].map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={addOutput} style={{ ...S.bigBtn, flex: 1, padding: "10px", marginTop: 0, fontSize: 13 }}>Añadir</button>
+                  <button onClick={() => { setShowAddOutput(false); setNewOutput({ mix: "", dest: "", type: "Wedge" }); }} style={{ ...S.navBtn, flex: 0.5 }}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setShowAddOutput(true)} style={{ ...S.addBtn, marginTop: 4 }}>+ Añadir output</button>
+            )}
+          </div>
+        )}
+
+        {/* RF TAB */}
+        {tab === "rf" && (
+          <div>
+            <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.08em", marginBottom: 10 }}>RF — {(monPos.rfEntries || []).length} unidades</div>
+            {(monPos.rfEntries || []).length > 0 && (
+              <div style={{ display: "flex", gap: 8, padding: "4px 10px", marginBottom: 4 }}>
+                <span style={{ ...labelStyle, width: 28 }}>CH</span>
+                <span style={{ ...labelStyle, flex: 1 }}>FREQ</span>
+                <span style={{ ...labelStyle, flex: 2 }}>USER</span>
+                <span style={{ ...labelStyle, flex: 1 }}>TYPE</span>
+                <span style={{ width: 24 }} />
+              </div>
+            )}
+            {(monPos.rfEntries || []).map(rf => (
+              editRfId === rf.id ? (
+                <div key={rf.id} style={{ ...rowStyle, flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <input value={editRfVal.ch ?? rf.ch} onChange={e => setEditRfVal(v => ({ ...v, ch: e.target.value }))} placeholder="CH" style={{ ...S.input, padding: "5px 8px", width: 60, fontSize: 13 }} autoFocus />
+                    <input value={editRfVal.freq ?? rf.freq} onChange={e => setEditRfVal(v => ({ ...v, freq: e.target.value }))} placeholder="Freq" style={{ ...S.input, padding: "5px 8px", flex: 1, fontSize: 13 }} />
+                    <input value={editRfVal.user ?? rf.user} onChange={e => setEditRfVal(v => ({ ...v, user: e.target.value }))} placeholder="User" style={{ ...S.input, padding: "5px 8px", flex: 2, fontSize: 13 }} />
+                    <select value={editRfVal.type ?? rf.type} onChange={e => setEditRfVal(v => ({ ...v, type: e.target.value }))} style={{ ...S.input, padding: "5px 8px", width: 80, fontSize: 13 }}>
+                      {["IEM", "Radio"].map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => saveRf(rf.id)} style={{ ...S.smBtn, flex: 1, padding: "6px", fontSize: 12 }}>✓ Guardar</button>
+                    <button onClick={() => setEditRfId(null)} style={{ ...S.smBtn, flex: 0.5, padding: "6px", fontSize: 12 }}>Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <div key={rf.id} style={rowStyle} onClick={() => { setEditRfId(rf.id); setEditRfVal({}); }}>
+                  <span style={{ width: 28, color: T.text3, fontWeight: 700, fontSize: 11, flexShrink: 0 }}>{rf.ch || "—"}</span>
+                  <span style={{ ...cellStyle, flex: 1, color: "#f59e0b", fontWeight: 600 }}>{rf.freq || "—"}</span>
+                  <span style={{ ...cellStyle, flex: 2 }}>{rf.user || "—"}</span>
+                  <span style={{ ...cellStyle, flex: 1, color: T.text3, fontSize: 11 }}>{rf.type}</span>
+                  <button onClick={e => { e.stopPropagation(); deleteRf(rf.id); }} style={{ background: "none", border: "none", color: T.text4, fontSize: 16, cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>×</button>
+                </div>
+              )
+            ))}
+            {showAddRf ? (
+              <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px", marginTop: 8 }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                  <input value={newRf.ch} onChange={e => setNewRf(v => ({ ...v, ch: e.target.value }))} placeholder="CH" style={{ ...S.input, padding: "7px 8px", width: 60, fontSize: 13 }} autoFocus />
+                  <input value={newRf.freq} onChange={e => setNewRf(v => ({ ...v, freq: e.target.value }))} placeholder="Freq" style={{ ...S.input, padding: "7px 8px", flex: 1, fontSize: 13 }} />
+                  <input value={newRf.user} onChange={e => setNewRf(v => ({ ...v, user: e.target.value }))} placeholder="User / artista" style={{ ...S.input, padding: "7px 8px", flex: 2, fontSize: 13 }} />
+                  <select value={newRf.type} onChange={e => setNewRf(v => ({ ...v, type: e.target.value }))} style={{ ...S.input, padding: "7px 8px", width: 80, fontSize: 13 }}>
+                    {["IEM", "Radio"].map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={addRf} style={{ ...S.bigBtn, flex: 1, padding: "10px", marginTop: 0, fontSize: 13 }}>Añadir</button>
+                  <button onClick={() => { setShowAddRf(false); setNewRf({ ch: "", freq: "", user: "", type: "IEM" }); }} style={{ ...S.navBtn, flex: 0.5 }}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setShowAddRf(true)} style={{ ...S.addBtn, marginTop: 4 }}>+ Añadir RF</button>
+            )}
+          </div>
+        )}
+
+        {/* HORARIOS TAB */}
+        {tab === "horarios" && (
+          <div>
+            <div style={{ fontSize: 10, color: T.text4, letterSpacing: "0.08em", marginBottom: 10 }}>
+              HORARIOS — {day ? day.label : ""} · {sortedArtists.length} artistas
+            </div>
+            {sortedArtists.length === 0 && (
+              <div style={{ color: T.text4, fontSize: 13, textAlign: "center", padding: "32px 0", fontFamily: "monospace" }}>No hay artistas en este día</div>
+            )}
+            {sortedArtists.map(a => (
+              <div key={a.id} style={{ ...rowStyle, justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+                  {a.showStart && (
+                    <span style={{ fontSize: 13, fontWeight: 700, color: dark ? "#818cf8" : "#4f46e5", fontFamily: "monospace", flexShrink: 0 }}>{a.showStart}</span>
+                  )}
+                  <span style={{ color: T.text, fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.artist}</span>
+                </div>
+                {a.console && <span style={{ color: T.text3, fontSize: 11, flexShrink: 0, marginLeft: 8 }}>{a.console}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+
       </div>
     </div>
   );
