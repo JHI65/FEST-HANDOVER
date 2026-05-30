@@ -2472,27 +2472,44 @@ function GeneralScheduleView({ fest }) {
     }
   }
 
+  const [selectedDay, setSelectedDay] = useState(() => dayLabels[0] || null);
+
   if (dayLabels.length === 0) {
     return <div style={{ textAlign: "center", color: T.text4, fontSize: 13, marginTop: 40 }}>Sin días configurados</div>;
   }
 
+  const activeDay = dayLabels.includes(selectedDay) ? selectedDay : dayLabels[0];
+
   return (
     <div>
-      {/* SHOW / SC toggle */}
-      <div style={{ display: "flex", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 10, padding: 2, gap: 2, marginBottom: 16, width: "fit-content" }}>
-        {[{ id: "show", label: "SHOW", color: showColor, bg: showBg, border: showBorder }, { id: "sc", label: "SC", color: scColor, bg: scBg, border: scBorder }].map(opt => (
-          <button key={opt.id} onClick={() => setMode(opt.id)} style={{
-            padding: "4px 14px", borderRadius: 8, border: "none", cursor: "pointer",
-            fontSize: 10, fontWeight: 700, fontFamily: "monospace", letterSpacing: "0.08em",
-            background: mode === opt.id ? opt.bg : "transparent",
-            color: mode === opt.id ? opt.color : T.text4,
-            outline: mode === opt.id ? `1px solid ${opt.border}` : "none",
-            transition: "all 0.15s",
-          }}>{opt.label}</button>
-        ))}
+      {/* SHOW / SC toggle + day pills */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 10, padding: 2, gap: 2, flexShrink: 0 }}>
+          {[{ id: "show", label: "SHOW", color: showColor, bg: showBg, border: showBorder }, { id: "sc", label: "SC", color: scColor, bg: scBg, border: scBorder }].map(opt => (
+            <button key={opt.id} onClick={() => setMode(opt.id)} style={{
+              padding: "4px 14px", borderRadius: 8, border: "none", cursor: "pointer",
+              fontSize: 10, fontWeight: 700, fontFamily: "monospace", letterSpacing: "0.08em",
+              background: mode === opt.id ? opt.bg : "transparent",
+              color: mode === opt.id ? opt.color : T.text4,
+              outline: mode === opt.id ? `1px solid ${opt.border}` : "none",
+              transition: "all 0.15s",
+            }}>{opt.label}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", flex: 1 }}>
+          {dayLabels.map(label => (
+            <button key={label} onClick={() => setSelectedDay(label)} style={{
+              flexShrink: 0, padding: "5px 14px", borderRadius: 20, fontSize: 12,
+              fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
+              whiteSpace: "nowrap", border: "none",
+              background: activeDay === label ? (dark ? "#334155" : "#0f172a") : (dark ? "#1e293b" : "#f1f5f9"),
+              color: activeDay === label ? "#fff" : T.text4,
+            }}>{label}</button>
+          ))}
+        </div>
       </div>
 
-      {dayLabels.map(dayLabel => {
+      {[activeDay].map(dayLabel => {
         // Build { time -> { stageId: artist } } for this day
         const timeMap = {};
         for (const stage of stages) {
@@ -2510,14 +2527,7 @@ function GeneralScheduleView({ fest }) {
         if (sortedTimes.length === 0) return null;
 
         return (
-          <div key={dayLabel} style={{ marginBottom: 28 }}>
-            {/* Day header */}
-            <div style={{
-              fontSize: 20, fontFamily: "'Bebas Neue',sans-serif", color: T.text,
-              letterSpacing: "0.06em", marginBottom: 8,
-              paddingBottom: 6, borderBottom: `2px solid ${activeColor}`,
-            }}>{dayLabel}</div>
-
+          <div key={dayLabel}>
             {/* Scrollable grid */}
             <div style={{ overflowX: "auto", borderRadius: 10, border: `1px solid ${T.border}`, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
