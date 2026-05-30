@@ -198,7 +198,7 @@ function LoginScreen() {
     setError(null);
     const sp = new URLSearchParams(window.location.search);
     const joinParam = sp.get("join") || sp.get("fest");
-    const redirectTo = window.location.origin + "/FEST-HANDOVER/" + (joinParam ? `?join=${encodeURIComponent(joinParam)}` : "");
+    const redirectTo = window.location.origin + "/Handover-Fest/" + (joinParam ? `?join=${encodeURIComponent(joinParam)}` : "");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
@@ -802,6 +802,7 @@ function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
   const [renamingId, setRenamingId] = useState(null);
   const [renameVal, setRenameVal] = useState("");
   const [showShare, setShowShare] = useState(false);
+  const [viewTab, setViewTab] = useState("stages"); // "stages" | "horarios"
   const [showDayAdd, setShowDayAdd] = useState(false);
   const [newDayLabel, setNewDayLabel] = useState("");
   const [newDayDate, setNewDayDate] = useState("");
@@ -889,6 +890,24 @@ function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
           </div>
         ) : (
           <>
+            {/* Tab switcher: STAGES | HORARIOS */}
+            <div style={{ display: "flex", gap: 4, background: T.card2, borderRadius: 10, padding: 3, marginBottom: 14 }}>
+              {[{ id: "stages", label: "STAGES" }, { id: "horarios", label: "HORARIOS" }].map(t => (
+                <button key={t.id} onClick={() => setViewTab(t.id)} style={{
+                  flex: 1, padding: "5px 14px", borderRadius: 8, fontSize: 11,
+                  fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
+                  border: "none",
+                  background: viewTab === t.id ? (dark ? "#334155" : "#0f172a") : "transparent",
+                  color: viewTab === t.id ? "#fff" : T.text4,
+                  transition: "all 0.2s",
+                }}>{t.label}</button>
+              ))}
+            </div>
+
+            {viewTab === "horarios" ? (
+              <GeneralScheduleView fest={fest} />
+            ) : (
+            <>
             <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
               <button onClick={() => { setEditMode(m => !m); setRenamingId(null); }} style={{
                 background: editMode ? "#fef2f2" : T.card2, border: `1px solid ${editMode ? "#fecaca" : T.border}`,
@@ -1013,6 +1032,8 @@ function StageView({ fest, userEmail, onBack, onEditFest, onOpenStage }) {
               </div>
             ) : (
               <button onClick={() => setShowAdd(true)} style={{ ...S.addBtn, marginTop: 12 }}>+ Añadir stage</button>
+            )}
+            </>
             )}
           </>
         )}
@@ -1687,7 +1708,7 @@ function LogModal({ log, festName, onClose }) {
 }
 
 function ShareModal({ fest, onClose }) {
-  const url = `${window.location.origin}/FEST-HANDOVER/?join=${fest.id}`;
+  const url = `${window.location.origin}/Handover-Fest/?join=${fest.id}`;
   const [copied, setCopied] = useState(false);
   const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
 
@@ -2423,6 +2444,149 @@ function HorariosView({ artists, day, onSaveTime }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ---------- horarios generales (parrilla) ---------- */
+function GeneralScheduleView({ fest }) {
+  const { dark } = useTheme(); const T = dark ? DK : LT;
+  const [mode, setMode] = useState("show");
+
+  const stages = fest.stages || [];
+  const getTime = (a) => mode === "show" ? a.showTime : a.scTime;
+
+  const scColor = dark ? "#34d399" : "#059669";
+  const scBg = dark ? "#064e3b" : "#ecfdf5";
+  const scBorder = dark ? "#10b98155" : "#6ee7b7";
+  const showColor = dark ? "#818cf8" : "#4f46e5";
+  const showBg = dark ? "#1e1b4b" : "#eef2ff";
+  const showBorder = dark ? "#4338ca55" : "#c7d2fe";
+  const activeColor = mode === "show" ? showColor : scColor;
+
+  // Unique day labels in order of first appearance
+  const dayLabels = [];
+  for (const st of stages) {
+    for (const d of st.days) {
+      if (!dayLabels.includes(d.label)) dayLabels.push(d.label);
+    }
+  }
+
+  if (dayLabels.length === 0) {
+    return <div style={{ textAlign: "center", color: T.text4, fontSize: 13, marginTop: 40 }}>Sin días configurados</div>;
+  }
+
+  return (
+    <div>
+      {/* SHOW / SC toggle */}
+      <div style={{ display: "flex", background: T.card2, border: `1px solid ${T.border}`, borderRadius: 10, padding: 2, gap: 2, marginBottom: 16, width: "fit-content" }}>
+        {[{ id: "show", label: "SHOW", color: showColor, bg: showBg, border: showBorder }, { id: "sc", label: "SC", color: scColor, bg: scBg, border: scBorder }].map(opt => (
+          <button key={opt.id} onClick={() => setMode(opt.id)} style={{
+            padding: "4px 14px", borderRadius: 8, border: "none", cursor: "pointer",
+            fontSize: 10, fontWeight: 700, fontFamily: "monospace", letterSpacing: "0.08em",
+            background: mode === opt.id ? opt.bg : "transparent",
+            color: mode === opt.id ? opt.color : T.text4,
+            outline: mode === opt.id ? `1px solid ${opt.border}` : "none",
+            transition: "all 0.15s",
+          }}>{opt.label}</button>
+        ))}
+      </div>
+
+      {dayLabels.map(dayLabel => {
+        // Build { time -> { stageId: artist } } for this day
+        const timeMap = {};
+        for (const stage of stages) {
+          const day = stage.days.find(d => d.label === dayLabel);
+          if (!day) continue;
+          for (const a of day.artists) {
+            const t = getTime(a);
+            if (!t) continue;
+            if (!timeMap[t]) timeMap[t] = {};
+            timeMap[t][stage.id] = a;
+          }
+        }
+
+        const sortedTimes = Object.keys(timeMap).sort((a, b) => a.localeCompare(b));
+        if (sortedTimes.length === 0) return null;
+
+        return (
+          <div key={dayLabel} style={{ marginBottom: 28 }}>
+            {/* Day header */}
+            <div style={{
+              fontSize: 20, fontFamily: "'Bebas Neue',sans-serif", color: T.text,
+              letterSpacing: "0.06em", marginBottom: 8,
+              paddingBottom: 6, borderBottom: `2px solid ${activeColor}`,
+            }}>{dayLabel}</div>
+
+            {/* Scrollable grid */}
+            <div style={{ overflowX: "auto", borderRadius: 10, border: `1px solid ${T.border}`, overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: 58 }} />
+                  {stages.map(st => <col key={st.id} />)}
+                </colgroup>
+                <thead>
+                  <tr style={{ background: T.card2 }}>
+                    <th style={{ padding: "8px 10px", borderBottom: `1px solid ${T.border}`, borderRight: `1px solid ${T.border}` }} />
+                    {stages.map(st => (
+                      <th key={st.id} style={{
+                        padding: "8px 10px", fontSize: 10,
+                        fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.1em",
+                        color: activeColor, textAlign: "center",
+                        borderBottom: `1px solid ${T.border}`,
+                        borderRight: `1px solid ${T.border}`,
+                        fontWeight: 400,
+                      }}>{st.name}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedTimes.map((time, idx) => {
+                    const rowData = timeMap[time];
+                    const isEven = idx % 2 === 0;
+                    return (
+                      <tr key={time} style={{ background: isEven ? T.card : T.card2 }}>
+                        <td style={{
+                          padding: "11px 10px", fontSize: 13, fontFamily: "monospace",
+                          color: T.text2, fontWeight: 700, whiteSpace: "nowrap",
+                          borderBottom: `1px solid ${T.border2}`,
+                          borderRight: `1px solid ${T.border}`,
+                          textAlign: "right",
+                        }}>{time}</td>
+                        {stages.map(st => {
+                          const a = rowData[st.id];
+                          return (
+                            <td key={st.id} style={{
+                              padding: "11px 12px", textAlign: "center",
+                              borderBottom: `1px solid ${T.border2}`,
+                              borderRight: `1px solid ${T.border}`,
+                            }}>
+                              {a ? (
+                                <div style={{
+                                  fontSize: 13, fontFamily: "'Bebas Neue',sans-serif",
+                                  color: T.text, letterSpacing: "0.04em",
+                                  border: `1px solid ${T.border}`,
+                                  borderRadius: 6, padding: "3px 8px",
+                                  display: "inline-block",
+                                  background: isEven ? T.card2 : T.card,
+                                  maxWidth: "100%", overflow: "hidden",
+                                  textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                }}>{a.artist || "—"}</div>
+                              ) : (
+                                <div style={{ height: 1, background: T.border, margin: "0 auto", width: "50%" }} />
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
