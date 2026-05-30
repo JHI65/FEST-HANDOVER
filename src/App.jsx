@@ -1225,7 +1225,7 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
       {/* BANDAS / RULOS tab switcher + sync */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", paddingBottom: 2 }}>
         <div style={{ display: "flex", gap: 4, background: T.card2, borderRadius: 10, padding: 3 }}>
-          {["bandas", "rulos", "horarios", "mesas"].map(t => (
+          {["bandas", "rulos", "horarios"].map(t => (
             <button key={t} onClick={() => { setTab(t); setSelectedId(null); setShowAdd(false); }} style={{
               padding: "4px 10px", borderRadius: 8, fontSize: 11,
               fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.06em", cursor: "pointer",
@@ -1233,7 +1233,7 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
               background: tab === t ? (dark ? "#334155" : "#0f172a") : "transparent",
               color: tab === t ? "#fff" : T.text4,
               transition: "all 0.2s",
-            }}>{t === "bandas" ? "BANDAS" : t === "rulos" ? "RULOS" : t === "horarios" ? "HORARIOS" : "MESAS"}</button>
+            }}>{t === "bandas" ? "BANDAS" : t === "rulos" ? "RULOS" : "HORARIOS"}</button>
           ))}
         </div>
         <button onClick={onRefresh} style={{ ...S.syncBtn, flexShrink: 0 }}>↻ {lastSync ? lastSync.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : ""}</button>
@@ -1519,10 +1519,6 @@ function FestView({ fest, stage, userEmail, dayIdx, setDayIdx, notes, setNotes, 
             day={day}
             onSaveTime={saveArtistTime}
           />
-        </div>
-      ) : tab === "mesas" ? (
-        <div style={{ flex: 1, padding: "12px 14px", background: T.bg, overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
-          <MesasView artists={artists} day={day} />
         </div>
       ) : (
         <div style={{ flex: 1, padding: "12px 14px", background: T.bg, overflowY: "auto", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
@@ -1994,11 +1990,12 @@ function CompactArtistCard({ a, fest, day, onSelect }) {
             <>
               <span style={{ color: textTertiary }}>·</span>
               <span style={{
-                fontSize: 9, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.06em", textTransform: "uppercase",
+                fontSize: 9, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.06em",
                 padding: "2px 6px", borderRadius: 4,
                 background: "#fefce8", border: "0.5px solid #fde047", color: "#a16207",
                 display: "inline-flex", alignItems: "center", gap: 3,
-              }}>⚡ Corriente</span>
+                maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>⚡ {a.corriente}</span>
             </>
           )}
         </div>
@@ -2448,108 +2445,6 @@ function HorariosView({ artists, day, onSaveTime }) {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-/* ---------- mesas ---------- */
-function MesasView({ artists, day }) {
-  const { dark } = useTheme(); const T = dark ? DK : LT; const S = makeS(T);
-
-  // Ordenar por showStart, sin hora al final
-  const sorted = [...artists].sort((a, b) => festTimeToMin(a.showStart) - festTimeToMin(b.showStart));
-
-  // Agrupar artistas por consola para detectar cambios de mesa
-  const consoles = [...new Set(artists.map(a => a.console).filter(Boolean))];
-
-  if (artists.length === 0) {
-    return <div style={{ textAlign: "center", color: T.text4, fontSize: 13, marginTop: 40 }}>Sin artistas en este día</div>;
-  }
-
-  const noConsole = sorted.filter(a => !a.console);
-
-  return (
-    <div>
-      <div style={{ fontSize: 10, letterSpacing: "0.08em", color: T.text4, textTransform: "uppercase", marginBottom: 12 }}>
-        {day.label} · {consoles.length} mesa{consoles.length !== 1 ? "s" : ""} distintas
-      </div>
-
-      {/* Timeline de cambios de mesa */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {sorted.map((a, idx) => {
-          const prev = sorted[idx - 1];
-          const isChange = idx > 0 && prev?.console !== a.console;
-          const hasTime = !!(a.showStart || a.scStart);
-
-          return (
-            <div key={a.id}>
-              {/* Separador visual cuando cambia la mesa */}
-              {isChange && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0 6px" }}>
-                  <div style={{ flex: 1, height: 1, background: T.border }} />
-                  <span style={{ fontSize: 9, color: "#f59e0b", letterSpacing: "0.12em", fontWeight: 700 }}>CAMBIO DE MESA</span>
-                  <div style={{ flex: 1, height: 1, background: T.border }} />
-                </div>
-              )}
-              <div style={{
-                background: T.card,
-                border: `1px solid ${T.border}`,
-                borderLeft: `3px solid ${a.console ? "#f59e0b" : T.border}`,
-                borderRadius: 12,
-                padding: "12px 14px",
-                display: "flex", alignItems: "center", gap: 12,
-              }}>
-                {/* Hora */}
-                <div style={{
-                  minWidth: 48, textAlign: "center",
-                  background: hasTime ? (dark ? "#1c1917" : "#fffbeb") : T.card2,
-                  border: `1px solid ${hasTime ? "#f59e0b55" : T.border}`,
-                  borderRadius: 8, padding: "4px 6px", flexShrink: 0,
-                }}>
-                  <div style={{ fontSize: 8, fontWeight: 700, color: "#f59e0b", letterSpacing: "0.08em" }}>SHOW</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: hasTime ? "#f59e0b" : T.text4, fontFamily: "monospace" }}>
-                    {a.showStart || "—"}
-                  </div>
-                </div>
-
-                {/* Info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontFamily: "'Bebas Neue',sans-serif", color: T.text, letterSpacing: "0.04em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {a.artist || "—"}
-                  </div>
-                  {a.console ? (
-                    <div style={{ fontSize: 12, color: "#f59e0b", fontFamily: "monospace", marginTop: 2, fontWeight: 700 }}>{a.console}</div>
-                  ) : (
-                    <div style={{ fontSize: 12, color: T.text4, fontStyle: "italic", marginTop: 2 }}>Sin mesa asignada</div>
-                  )}
-                  {a.tecnico && (
-                    <div style={{ fontSize: 11, color: T.text3, marginTop: 1 }}>Técnico: {a.tecnico}</div>
-                  )}
-                </div>
-
-                {/* Badge cambio si cambia de mesa respecto al anterior */}
-                {isChange && (
-                  <div style={{ fontSize: 9, color: "#fff", background: "#f59e0b", borderRadius: 6, padding: "2px 7px", flexShrink: 0, fontWeight: 700, letterSpacing: "0.06em" }}>
-                    ↕
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Artistas sin hora (al final) */}
-      {noConsole.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 9, color: T.text4, letterSpacing: "0.12em", marginBottom: 8 }}>SIN MESA ASIGNADA</div>
-          {noConsole.map(a => (
-            <div key={a.id} style={{ background: T.card2, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 14px", marginBottom: 6, opacity: 0.6 }}>
-              <div style={{ fontSize: 14, fontFamily: "'Bebas Neue',sans-serif", color: T.text4 }}>{a.artist || "—"}</div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
