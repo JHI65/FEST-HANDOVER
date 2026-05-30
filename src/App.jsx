@@ -2454,7 +2454,7 @@ function GeneralScheduleView({ fest }) {
   const [mode, setMode] = useState("show");
 
   const stages = fest.stages || [];
-  const getTime = (a) => mode === "show" ? a.showTime : a.scTime;
+  const getTime = (a) => mode === "show" ? (a.showStart || "") : (a.scStart || "");
 
   const scColor = dark ? "#34d399" : "#059669";
   const scBg = dark ? "#064e3b" : "#ecfdf5";
