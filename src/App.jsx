@@ -2506,7 +2506,7 @@ function GeneralScheduleView({ fest }) {
           }
         }
 
-        const sortedTimes = Object.keys(timeMap).sort((a, b) => a.localeCompare(b));
+        const sortedTimes = Object.keys(timeMap).sort((a, b) => festTimeToMin(a) - festTimeToMin(b));
         if (sortedTimes.length === 0) return null;
 
         return (
